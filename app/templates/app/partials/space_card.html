@@ -1,0 +1,9 @@
+<a class="space-card" href="{% url 'app:space_detail' space.id %}">
+  <span class="space-thumb">
+    <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
+  </span>
+  <span class="space-copy">
+    <span class="space-name">{{ space.name }}</span>
+    <span class="muted">{{ space.role }}</span>
+  </span>
+</a>

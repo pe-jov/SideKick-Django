@@ -1,0 +1,24 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+  <section class="section animate-in">
+    <div class="profile-card">
+      <img class="profile-image" src="https://picsum.photos/seed/myprofile/200/200" alt="Profile" referrerpolicy="no-referrer">
+      <div class="profile-copy">
+        <h3>John Doe</h3>
+        <p>john.doe@example.com</p>
+        <button class="button neutral-button">Edit Profile</button>
+      </div>
+    </div>
+
+    <div class="settings-list">
+      <h3 class="section-title">Account Settings</h3>
+      {% for setting in settings %}
+        <button class="setting-row">
+          <span>{{ setting }}</span>
+          <span class="chevron">›</span>
+        </button>
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

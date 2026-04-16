@@ -1,0 +1,23 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+  <div class="space-hero animate-in">
+    <div class="space-hero-image">
+      <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
+    </div>
+    <div>
+      <h2>{{ space.name }}</h2>
+      <p>{{ space.role }} • {{ item_count }} Items</p>
+    </div>
+  </div>
+
+  <section class="section animate-in slow">
+    {% include "app/partials/filter_pills.html" with filters=item_filter_links %}
+
+    <div class="item-masonry">
+      {% for item in items %}
+        {% include "app/partials/item_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

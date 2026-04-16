@@ -1,0 +1,28 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} | SideKick</title>
+    <link rel="stylesheet" href="{% static 'app/css/styles.css' %}">
+    <script>
+      if (localStorage.getItem("sidekick-theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+  </head>
+  <body>
+    <div class="app-shell">
+      {% include "app/partials/header.html" %}
+      <main class="main-content">
+        {% block content %}{% endblock %}
+      </main>
+      {% include "app/partials/bottom_nav.html" %}
+      {% if is_modal_open %}
+        {% include "app/partials/collaborators_modal.html" %}
+      {% endif %}
+    </div>
+    <script src="{% static 'app/js/app.js' %}"></script>
+  </body>
+</html>

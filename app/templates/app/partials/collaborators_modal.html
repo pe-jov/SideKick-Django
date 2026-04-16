@@ -1,0 +1,29 @@
+<div class="modal-backdrop" data-modal-backdrop>
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="collaborators-title">
+    <div class="modal-header">
+      <h2 id="collaborators-title">Collaborators</h2>
+      <a class="button close-button" href="{{ close_modal_url }}" aria-label="Close collaborators">
+        {% include "app/partials/icons/x.svg" %}
+      </a>
+    </div>
+
+    <div class="collaborator-list">
+      {% for user in collaborators %}
+        <article class="collaborator-row">
+          <div class="collaborator-person">
+            <img src="{{ user.avatar }}" alt="{{ user.name }}" referrerpolicy="no-referrer">
+            <div>
+              <p class="collaborator-name">{{ user.name }}</p>
+              <p class="muted collaborator-email">{{ user.email }}</p>
+            </div>
+          </div>
+          <span class="role-badge {{ user.badge_class }}">{{ user.role }}</span>
+        </article>
+      {% endfor %}
+    </div>
+
+    <div class="modal-footer">
+      <button class="invite-button" type="button">Invite People</button>
+    </div>
+  </section>
+</div>

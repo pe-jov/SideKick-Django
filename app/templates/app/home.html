@@ -1,0 +1,25 @@
+{% extends "app/base.html" %}
+
+{% block content %}
+  <section class="section">
+    <h2 class="section-title">Research Spaces</h2>
+    {% include "app/partials/filter_pills.html" with filters=space_filter_links %}
+
+    <div class="space-grid">
+      {% for space in spaces %}
+        {% include "app/partials/space_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="section">
+    <h2 class="section-title">Recent Items</h2>
+    {% include "app/partials/filter_pills.html" with filters=item_filter_links %}
+
+    <div class="item-masonry">
+      {% for item in items %}
+        {% include "app/partials/item_card.html" %}
+      {% endfor %}
+    </div>
+  </section>
+{% endblock %}

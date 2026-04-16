@@ -1,0 +1,22 @@
+<article class="item-card">
+  {% if item.type == "image" %}
+    <img class="item-image" src="{{ item.src }}" alt="Saved item" referrerpolicy="no-referrer">
+  {% elif item.type == "text" %}
+    <div class="item-content square-card">
+      <span class="small-icon">{% include "app/partials/icons/file_text.svg" %}</span>
+      <div>
+        <p class="item-text">"{{ item.content }}"</p>
+        <p class="item-space">{{ item.space }}</p>
+      </div>
+    </div>
+  {% elif item.type == "link" %}
+    <div class="item-content square-card">
+      <span class="small-icon">{% include "app/partials/icons/link.svg" %}</span>
+      <div>
+        <h3 class="item-title">{{ item.title }}</h3>
+        <p class="muted item-domain">{{ item.domain }}</p>
+        <p class="item-space">{{ item.space }}</p>
+      </div>
+    </div>
+  {% endif %}
+</article>

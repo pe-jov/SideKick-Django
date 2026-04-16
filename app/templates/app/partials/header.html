@@ -1,0 +1,27 @@
+<header class="top-header">
+  {% if active_tab == "profile" or selected_space %}
+    <a class="button header-button" href="{{ back_url }}" aria-label="Back">
+      <span class="icon">{% include "app/partials/icons/chevron_left.svg" %}</span>
+      <span class="optional-label">Back</span>
+    </a>
+  {% else %}
+    <span class="header-spacer" aria-hidden="true"></span>
+  {% endif %}
+
+  <h1>{{ title }}</h1>
+
+  <div class="header-actions">
+    <button class="button icon-button" type="button" data-theme-toggle aria-label="Toggle dark mode">
+      <span class="icon moon-icon">{% include "app/partials/icons/moon.svg" %}</span>
+      <span class="icon sun-icon">{% include "app/partials/icons/sun.svg" %}</span>
+    </button>
+    <a class="button header-button" href="{{ team_url }}">
+      <span class="icon">{% include "app/partials/icons/users.svg" %}</span>
+      <span class="optional-label">Team</span>
+    </a>
+    <button class="button header-button" type="button">
+      <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+      <span class="optional-label">Upload</span>
+    </button>
+  </div>
+</header>

@@ -1,0 +1,8 @@
+<nav class="bottom-nav" aria-label="Primary navigation">
+  <a class="nav-button {% if active_tab == 'home' and not selected_space %}active{% endif %}" href="{{ home_url }}" aria-label="Home">
+    {% include "app/partials/icons/home.svg" %}
+  </a>
+  <a class="nav-button {% if active_tab == 'profile' %}active{% endif %}" href="{{ profile_url }}" aria-label="Profile">
+    {% include "app/partials/icons/user.svg" %}
+  </a>
+</nav>

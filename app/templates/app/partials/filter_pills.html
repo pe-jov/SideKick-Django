@@ -1,0 +1,5 @@
+<div class="filter-row">
+  {% for filter in filters %}
+    <a class="pill {% if filter.is_active %}active{% endif %}" href="{{ filter.url }}">{{ filter.label }}</a>
+  {% endfor %}
+</div>
