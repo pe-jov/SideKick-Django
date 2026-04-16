@@ -1,3 +1,4 @@
+# Author Petar Jovanovic
 from django.db import models
 
 

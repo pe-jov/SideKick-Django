@@ -1,3 +1,4 @@
+// Author Petar Jovanovic
 const root = document.documentElement;
 const toggle = document.querySelector("[data-theme-toggle]");
 
