@@ -1,0 +1,52 @@
+<!-- Author Petar Jovanovic -->
+<div class="modal-backdrop" data-modal-backdrop>
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
+    <div class="modal-header">
+      <h2 id="action-modal-title">
+        {% if action_modal.type == "change-password" %}
+          Change Password
+        {% else %}
+          {{ action_modal.title }}
+        {% endif %}
+      </h2>
+      <a class="button close-button" href="{{ close_dialog_url }}" aria-label="Close dialog">
+        {% include "app/partials/icons/x.svg" %}
+      </a>
+    </div>
+
+    {% if action_modal.type == "change-password" %}
+      <form class="form-stack" data-change-password-form>
+        <p class="mock-panel-copy">Enter the current password before setting a new one.</p>
+        <label>
+          <span class="sr-only">Current password</span>
+          <input class="form-input" type="password" name="current_password" placeholder="Current password" required>
+        </label>
+        <label>
+          <span class="sr-only">New password</span>
+          <input class="form-input" type="password" name="new_password" placeholder="New password" required>
+        </label>
+        <label>
+          <span class="sr-only">Confirm new password</span>
+          <input class="form-input" type="password" name="confirm_password" placeholder="Confirm new password" required>
+        </label>
+        <ul class="rule-list">
+          {% for rule in password_rules %}
+            <li>{{ rule }}</li>
+          {% endfor %}
+        </ul>
+        <div class="modal-actions">
+          <button class="invite-button" type="submit">Save Password</button>
+        </div>
+        <p class="mock-login-feedback" data-password-feedback aria-live="polite"></p>
+      </form>
+    {% else %}
+      <div class="form-stack">
+        <p class="mock-panel-copy">{{ action_modal.copy }}</p>
+        <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="invite-button" type="button">{{ action_modal.confirm_label }}</button>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+</div>

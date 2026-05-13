@@ -61,14 +61,49 @@ COLLABORATORS = [
     },
 ]
 
+COLLABORATION_REQUESTS = [
+    {
+        "id": 1,
+        "name": "Ana Markovic",
+        "space": "Project Alpha",
+        "status": "Pending approval",
+        "status_class": "status-pending",
+        "note": "Owner treba da pregleda zahtev za pristup.",
+    },
+    {
+        "id": 2,
+        "name": "Nikola Ilic",
+        "space": "Travel Ideas",
+        "status": "Approved",
+        "status_class": "status-approved",
+        "note": "Pristup je odobren i korisnik je obavesten.",
+    },
+    {
+        "id": 3,
+        "name": "Jelena Popovic",
+        "space": "Design Inspiration",
+        "status": "Rejected",
+        "status_class": "status-rejected",
+        "note": "Zahtev je zatvoren i ne moze se slati beskonacno iznova.",
+    },
+]
+
 SETTINGS = ["Notifications", "Privacy & Security", "Appearance", "Help & Support"]
 SPACE_FILTERS = ["All", "Owned", "Shared"]
 ITEM_FILTERS = ["All", "Images", "Links", "Text"]
+PASSWORD_RULES = [
+    "Najmanje 8 karaktera",
+    "Najmanje jedno malo slovo",
+    "Najmanje jedno veliko slovo",
+    "Najmanje jedna cifra",
+    "Najmanje jedan specijalni karakter",
+]
 
 
 def generate_items():
     items = []
     item_id = 1
+    authors = [user["name"] for user in COLLABORATORS]
     for space in SPACES:
         seed_name = space["name"].replace(" ", "")
         for index in range(10):
@@ -91,6 +126,7 @@ def generate_items():
                     "title": f"Korisni resurs #{index + 1}" if item_type == "link" else None,
                     "domain": "developer.apple.com" if item_type == "link" else None,
                     "space": space["name"],
+                    "added_by": authors[(index + space["id"]) % len(authors)],
                 }
             )
             item_id += 1
@@ -98,7 +134,7 @@ def generate_items():
 
 
 ALL_ITEMS = generate_items()
-RECENT_ITEMS = [item for index, item in enumerate(ALL_ITEMS) if index % 6 == 0][:6]
+RECENT_ITEMS = ALL_ITEMS[:6]
 
 
 def get_space(space_id):
@@ -117,11 +153,20 @@ def filter_spaces(active_filter):
     return SPACES
 
 
-def filter_items(items, active_filter):
+def item_user_filters(items):
+    return ["All", *sorted({item["added_by"] for item in items})]
+
+
+def filter_items(items, active_filter, active_user_filter="All"):
+    filtered_items = items
     if active_filter == "Images":
-        return [item for item in items if item["type"] == "image"]
-    if active_filter == "Links":
-        return [item for item in items if item["type"] == "link"]
-    if active_filter == "Text":
-        return [item for item in items if item["type"] == "text"]
-    return items
+        filtered_items = [item for item in filtered_items if item["type"] == "image"]
+    elif active_filter == "Links":
+        filtered_items = [item for item in filtered_items if item["type"] == "link"]
+    elif active_filter == "Text":
+        filtered_items = [item for item in filtered_items if item["type"] == "text"]
+
+    if active_user_filter != "All":
+        filtered_items = [item for item in filtered_items if item["added_by"] == active_user_filter]
+
+    return filtered_items

@@ -23,6 +23,12 @@
       {% if is_modal_open %}
         {% include "app/partials/collaborators_modal.html" %}
       {% endif %}
+      {% if mock_panel %}
+        {% include "app/partials/mock_panel.html" %}
+      {% endif %}
+      {% if action_modal %}
+        {% include "app/partials/action_modal.html" %}
+      {% endif %}
     </div>
     <script src="{% static 'app/js/app.js' %}"></script>
   </body>

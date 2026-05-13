@@ -1,14 +1,25 @@
 <!-- Author Petar Jovanovic -->
-<article class="item-card">
+<article class="item-card" data-type="{{ item.type }}">
   {% if item.type == "image" %}
     <img class="item-image" src="{{ item.src }}" alt="Saved item" referrerpolicy="no-referrer">
+    <div class="item-card-footer">
+      <p class="item-space">{{ item.space }}</p>
+      <p class="muted item-meta">Added by {{ item.added_by }}</p>
+      {% if show_item_actions %}
+        <a class="plain-button item-action-link" href="{{ item.delete_url }}">Delete item</a>
+      {% endif %}
+    </div>
   {% elif item.type == "text" %}
     <div class="item-content square-card">
       <span class="small-icon">{% include "app/partials/icons/file_text.svg" %}</span>
       <div>
         <p class="item-text">"{{ item.content }}"</p>
         <p class="item-space">{{ item.space }}</p>
+        <p class="muted item-meta">Added by {{ item.added_by }}</p>
       </div>
+      {% if show_item_actions %}
+        <a class="plain-button item-action-link" href="{{ item.delete_url }}">Delete item</a>
+      {% endif %}
     </div>
   {% elif item.type == "link" %}
     <div class="item-content square-card">
@@ -17,7 +28,11 @@
         <h3 class="item-title">{{ item.title }}</h3>
         <p class="muted item-domain">{{ item.domain }}</p>
         <p class="item-space">{{ item.space }}</p>
+        <p class="muted item-meta">Added by {{ item.added_by }}</p>
       </div>
+      {% if show_item_actions %}
+        <a class="plain-button item-action-link" href="{{ item.delete_url }}">Delete item</a>
+      {% endif %}
     </div>
   {% endif %}
 </article>

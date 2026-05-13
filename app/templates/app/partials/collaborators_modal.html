@@ -2,10 +2,26 @@
 <div class="modal-backdrop" data-modal-backdrop>
   <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="collaborators-title">
     <div class="modal-header">
-      <h2 id="collaborators-title">Collaborators</h2>
+      <h2 id="collaborators-title">Team</h2>
       <a class="button close-button" href="{{ close_modal_url }}" aria-label="Close collaborators">
         {% include "app/partials/icons/x.svg" %}
       </a>
+    </div>
+
+    <div class="request-status-panel">
+      <h3 class="section-title">Request Updates</h3>
+      {% for request in collaboration_requests %}
+        <article class="request-status-card">
+          <div>
+            <p class="collaborator-name">{{ request.name }}</p>
+            <p class="muted">{{ request.space }}</p>
+          </div>
+          <div class="request-status-copy">
+            <span class="status-pill {{ request.status_class }}">{{ request.status }}</span>
+            <p class="muted">{{ request.note }}</p>
+          </div>
+        </article>
+      {% endfor %}
     </div>
 
     <div class="collaborator-list">
@@ -18,7 +34,12 @@
               <p class="muted collaborator-email">{{ user.email }}</p>
             </div>
           </div>
-          <span class="role-badge {{ user.badge_class }}">{{ user.role }}</span>
+          <div class="collaborator-actions">
+            <span class="role-badge {{ user.badge_class }}">{{ user.role }}</span>
+            {% if user.role != "Owner" and selected_space and selected_space.role == "Owner" %}
+              <a class="plain-button item-action-link" href="?modal=team&dialog=remove-member&member={{ user.name|urlencode }}">Remove</a>
+            {% endif %}
+          </div>
         </article>
       {% endfor %}
     </div>

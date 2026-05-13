@@ -16,6 +16,7 @@
   <section class="section">
     <h2 class="section-title">Recent Items</h2>
     {% include "app/partials/filter_pills.html" with filters=item_filter_links %}
+    {% include "app/partials/filter_pills.html" with filters=user_filter_links row_class="subfilter-row" %}
 
     <div class="item-masonry">
       {% for item in items %}

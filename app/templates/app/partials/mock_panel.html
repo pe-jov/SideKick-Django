@@ -1,0 +1,67 @@
+<!-- Author Petar Jovanovic -->
+<div class="modal-backdrop" data-modal-backdrop>
+  <div class="modal-card mock-panel-card">
+    <div class="modal-header">
+      <h2>{% if mock_panel == "register" %}Register{% else %}Login{% endif %}</h2>
+      <a class="button icon-button close-button" href="{{ close_mock_url }}" aria-label="Close">
+        <span class="icon">{% include "app/partials/icons/x.svg" %}</span>
+      </a>
+    </div>
+
+    <form class="form-stack mock-login-form" data-mock-login-form data-close-url="{{ close_mock_url }}">
+      <p class="mock-panel-copy">
+        {% if mock_panel == "register" %}
+          Create an account to preview the registration flow for the full app.
+        {% else %}
+          Sign in to preview the login flow for the full app.
+        {% endif %}
+      </p>
+      {% if mock_panel == "register" %}
+        <label>
+          <span class="sr-only">Full name</span>
+          <input class="form-input" type="text" name="name" value="Demo User" required>
+        </label>
+      {% endif %}
+      <label>
+        <span class="sr-only">Email</span>
+        <input
+          class="form-input"
+          type="email"
+          name="email"
+          value="{% if mock_panel == 'register' %}newuser@sidekick.app{% else %}demo@sidekick.app{% endif %}"
+          required
+        >
+      </label>
+      <label>
+        <span class="sr-only">Password</span>
+        <input class="form-input" type="password" name="password" value="sidekick-demo" required>
+      </label>
+      {% if mock_panel == "register" %}
+        <ul class="rule-list">
+          {% for rule in password_rules %}
+            <li>{{ rule }}</li>
+          {% endfor %}
+        </ul>
+        <label>
+          <span class="sr-only">Confirm password</span>
+          <input class="form-input" type="password" name="confirm_password" value="sidekick-demo" required>
+        </label>
+      {% endif %}
+      <div class="mock-panel-switch">
+        {% if mock_panel == "register" %}
+          <span class="muted">Already have an account?</span>
+          <a class="mock-panel-link" href="{{ login_url }}">Login</a>
+        {% else %}
+          <span class="muted">Need an account?</span>
+          <a class="mock-panel-link" href="{{ register_url }}">Register</a>
+        {% endif %}
+      </div>
+      <div class="modal-actions">
+        <button class="invite-button" type="submit">
+          {% if mock_panel == "register" %}Create Account{% else %}Sign In{% endif %}
+        </button>
+      </div>
+      <p class="mock-login-feedback" data-mock-login-feedback aria-live="polite"></p>
+    </form>
+  </div>
+</div>
