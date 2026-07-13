@@ -6,7 +6,7 @@
 4. Click `Load unpacked`.
 5. Select this folder:
 
-   `C:\Users\nepuc\Documents\Codex Projects\SideKick\SideKick-Django 2\extension`
+   `extension/`
 
 6. The SideKick extension should now appear in the extensions list.
 7. If Chrome asks for permissions, approve them.
