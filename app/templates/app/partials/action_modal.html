@@ -55,8 +55,15 @@
         <p class="mock-login-feedback" data-password-feedback aria-live="polite"></p>
       </form>
     {% elif action_modal.type == "edit-profile" %}
-      <form class="form-stack" method="post" action="{{ update_profile_url }}">
+      <form class="form-stack" method="post" action="{{ update_profile_url }}" enctype="multipart/form-data">
         {% csrf_token %}
+        <div class="profile-avatar-input">
+          <img class="profile-avatar-preview" src="{{ action_modal.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
+          <label class="button neutral-button profile-avatar-upload">
+            <span>Choose Photo</span>
+            <input class="sr-only" type="file" name="avatar_file" accept="image/*">
+          </label>
+        </div>
         <label>
           <span class="sr-only">Full name</span>
           <input class="form-input" type="text" name="full_name" value="{{ action_modal.full_name }}" required>

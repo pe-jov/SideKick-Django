@@ -6,14 +6,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 
-CURATED_AVATARS = [
-    "https://randomuser.me/api/portraits/men/32.jpg",
-    "https://randomuser.me/api/portraits/men/45.jpg",
-    "https://randomuser.me/api/portraits/men/68.jpg",
-    "https://randomuser.me/api/portraits/women/44.jpg",
-    "https://randomuser.me/api/portraits/men/75.jpg",
-    "https://randomuser.me/api/portraits/women/63.jpg",
-]
+DEFAULT_AVATAR_URL = "/static/app/img/avatar-placeholder.svg"
 
 SPACE_COVERS = {
     "product-narrative-lab": "https://images.unsplash.com/photo-1516321165247-4aa89a48be28?auto=format&fit=crop&w=900&q=80",
@@ -36,6 +29,7 @@ class User(TimestampedModel):
     email = models.EmailField(unique=True)
     password_hash = models.CharField(max_length=255, db_column="passwordHash")
     full_name = models.CharField(max_length=255, db_column="fullName")
+    avatar_path = models.CharField(max_length=500, blank=True, db_column="avatarPath")
 
     class Meta:
         db_table = "USER"
@@ -46,9 +40,7 @@ class User(TimestampedModel):
 
     @property
     def avatar_url(self):
-        if self.user_id:
-            return CURATED_AVATARS[(self.user_id - 1) % len(CURATED_AVATARS)]
-        return CURATED_AVATARS[0]
+        return self.avatar_path or DEFAULT_AVATAR_URL
 
 
 class AuthToken(models.Model):

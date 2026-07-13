@@ -6,15 +6,7 @@
   {% if space.can_accept_drop %}data-drop-space-id="{{ space.id }}"{% endif %}
   {% if not space.can_accept_drop %}data-drop-disabled="true"{% endif %}
 >
-  <span class="space-role-icon" aria-hidden="true">
-    {% if space.role == "Viewer" %}
-      {% include "app/partials/icons/eye.svg" %}
-    {% elif space.role == "Collaborator" %}
-      {% include "app/partials/icons/pencil.svg" %}
-    {% elif space.role == "Owner" %}
-      {% include "app/partials/icons/key.svg" %}
-    {% endif %}
-  </span>
+  <span class="space-role-dot space-role-dot--{{ space.role|lower }}" aria-hidden="true"></span>
   <span class="sr-only">{{ space.role }}</span>
   <span class="space-copy">
     <span class="space-name">{{ space.name }}</span>

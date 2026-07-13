@@ -429,6 +429,16 @@ def save_uploaded_image(uploaded_image, current_user):
     return default_storage.url(stored_path)
 
 
+def save_uploaded_avatar(uploaded_image, current_user):
+    safe_name = slugify(uploaded_image.name.rsplit(".", 1)[0]) or "avatar"
+    extension = uploaded_image.name.rsplit(".", 1)[-1].lower() if "." in uploaded_image.name else "bin"
+    stored_path = default_storage.save(
+        f"uploads/user_{current_user.user_id}/avatars/{timezone.now().strftime('%Y%m%d%H%M%S')}_{safe_name}.{extension}",
+        uploaded_image,
+    )
+    return default_storage.url(stored_path)
+
+
 def create_item_record(*, current_user, space, item_type, content_text="", source_url="", title="", uploaded_image=None):
     item_type = (item_type or Item.ItemType.TEXT).lower()
     valid_item_types = {choice for choice, _ in Item.ItemType.choices}
@@ -725,6 +735,7 @@ def build_action_modal(request, *, selected_space=None, items=None):
             "title": "Edit Profile",
             "full_name": current_user.full_name,
             "email": current_user.email,
+            "avatar_url": current_user.avatar_url,
         }
     if dialog == "create-space":
         return {
@@ -1106,8 +1117,13 @@ def update_profile(request):
 
     current_user.full_name = full_name
     current_user.email = email
+    uploaded_avatar = request.FILES.get("avatar_file")
+    update_fields = ["full_name", "email", "updated_at"]
+    if uploaded_avatar is not None:
+        current_user.avatar_path = save_uploaded_avatar(uploaded_avatar, current_user)
+        update_fields.append("avatar_path")
     current_user.updated_at = timezone.now()
-    current_user.save(update_fields=["full_name", "email", "updated_at"])
+    current_user.save(update_fields=update_fields)
     messages.success(request, "Profile updated.")
     return redirect_with_request_auth(request, reverse("app:profile"))
 
