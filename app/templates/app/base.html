@@ -17,18 +17,35 @@
     <div class="app-shell">
       {% include "app/partials/header.html" %}
       <main class="main-content">
+        {% if messages %}
+          <div class="message-stack">
+            {% for message in messages %}
+              <div class="flash-message flash-message--{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
         {% block content %}{% endblock %}
       </main>
-      {% include "app/partials/bottom_nav.html" %}
+      {% if current_user %}
+        {% include "app/partials/bottom_nav.html" %}
+      {% endif %}
       {% if is_modal_open %}
         {% include "app/partials/collaborators_modal.html" %}
       {% endif %}
       {% if mock_panel %}
         {% include "app/partials/mock_panel.html" %}
       {% endif %}
+      {% if item_preview %}
+        {% include "app/partials/item_preview_modal.html" %}
+      {% endif %}
       {% if action_modal %}
         {% include "app/partials/action_modal.html" %}
       {% endif %}
+    </div>
+    <div class="item-context-menu" data-item-context-menu hidden>
+      <a class="item-context-menu__action" data-item-context-action href="#">
+        Delete item
+      </a>
     </div>
     <script src="{% static 'app/js/app.js' %}"></script>
   </body>

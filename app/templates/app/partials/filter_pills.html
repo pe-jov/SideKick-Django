@@ -1,5 +1,8 @@
 <!-- Author Petar Jovanovic -->
 <div class="filter-row {% if row_class %}{{ row_class }}{% endif %}">
+  {% if title %}
+    <span class="filter-label">{{ title }}</span>
+  {% endif %}
   {% for filter in filters %}
     <a class="pill {% if filter.is_active %}active{% endif %}" href="{{ filter.url }}">{{ filter.label }}</a>
   {% endfor %}

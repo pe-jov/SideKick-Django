@@ -1,0 +1,71 @@
+<!-- Author Petar Jovanovic -->
+<div class="modal-backdrop item-preview-backdrop" data-modal-backdrop data-close-url="{{ item_preview.close_url }}">
+  <section class="modal-card item-preview-card item-preview-card--{{ item_preview.type }}" role="dialog" aria-modal="true" aria-labelledby="item-preview-title">
+    <h2 id="item-preview-title" class="sr-only">{{ item_preview.title|default:item_preview.page_title|default:"Saved item" }}</h2>
+    <a class="button close-button item-preview-close" href="{{ item_preview.close_url }}" aria-label="Close preview">
+      {% include "app/partials/icons/x.svg" %}
+    </a>
+
+    {% if item_preview.type == "image" %}
+      <div class="item-preview-body">
+        <div class="item-preview-image-wrap">
+          <img class="item-preview-image" src="{{ item_preview.src }}" alt="Saved image" referrerpolicy="no-referrer">
+        </div>
+        <div class="item-preview-footer">
+          <p>{{ item_preview.space }}</p>
+          <span>•</span>
+          <p>{{ item_preview.added_by }}</p>
+          {% if item_preview.note %}
+            <p class="item-preview-note">{{ item_preview.note }}</p>
+          {% endif %}
+        </div>
+      </div>
+    {% elif item_preview.type == "text" %}
+      <div class="item-preview-body">
+        <div class="item-preview-text">
+          <blockquote class="item-preview-quote">“{{ item_preview.content }}”</blockquote>
+          {% if item_preview.note %}
+            <p class="item-preview-note">{{ item_preview.note }}</p>
+          {% endif %}
+          <div class="item-preview-footer">
+            <p>{{ item_preview.space }}</p>
+            <span>•</span>
+            <p>{{ item_preview.added_by }}</p>
+          </div>
+        </div>
+      </div>
+    {% elif item_preview.type == "link" %}
+      <div class="item-preview-body">
+        <div class="link-preview-shell">
+          <div class="link-preview-content">
+            <div class="link-preview-topline">
+              {% if item_preview.favicon_url %}
+                <img class="link-preview-favicon" src="{{ item_preview.favicon_url }}" alt="" referrerpolicy="no-referrer">
+              {% endif %}
+              <p class="link-preview-domain">{{ item_preview.domain|default:"Saved link" }}</p>
+            </div>
+            <h3 class="link-preview-title">{{ item_preview.title|default:item_preview.page_title|default:"Saved link" }}</h3>
+            {% if item_preview.external_url %}
+              <p class="link-preview-url">{{ item_preview.external_url }}</p>
+            {% endif %}
+            {% if item_preview.note %}
+              <p class="item-preview-note">{{ item_preview.note }}</p>
+            {% endif %}
+            <div class="item-preview-footer">
+              <p>{{ item_preview.space }}</p>
+              <span>•</span>
+              <p>{{ item_preview.added_by }}</p>
+            </div>
+            {% if item_preview.external_url %}
+              <div class="modal-actions">
+                <a class="button invite-button" href="{{ item_preview.external_url }}" target="_blank" rel="noreferrer">
+                  Open Link
+                </a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  </section>
+</div>

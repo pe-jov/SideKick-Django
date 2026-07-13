@@ -2,26 +2,60 @@
 {% extends "app/base.html" %}
 
 {% block content %}
-  <section class="section">
-    <h2 class="section-title">Research Spaces</h2>
-    {% include "app/partials/filter_pills.html" with filters=space_filter_links %}
+  {% if current_user %}
+    <section class="section">
+      {% include "app/partials/filter_pills.html" with filters=space_filter_links %}
 
-    <div class="space-grid">
-      {% for space in spaces %}
-        {% include "app/partials/space_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
+      {% if spaces %}
+        <div class="space-grid">
+          {% for space in spaces %}
+            {% include "app/partials/space_card.html" %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>Create your first space</h3>
+          <p class="launchpad-copy">Start with a space for a project, topic, or course, then begin saving items into it.</p>
+          <a class="button invite-button" href="{{ create_space_url }}">Create Space</a>
+        </div>
+      {% endif %}
+    </section>
 
-  <section class="section">
-    <h2 class="section-title">Recent Items</h2>
-    {% include "app/partials/filter_pills.html" with filters=item_filter_links %}
-    {% include "app/partials/filter_pills.html" with filters=user_filter_links row_class="subfilter-row" %}
+    <section class="section">
+      <h2 class="section-title">Recent Items</h2>
+      {% if items %}
+        <div class="item-masonry">
+          {% for item in items %}
+            {% include "app/partials/item_card.html" %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <h3>No saved items yet</h3>
+          <p class="launchpad-copy">Open a space and add a text note, a link, or an uploaded image. Everything is saved in the local database.</p>
+        </div>
+      {% endif %}
+    </section>
+  {% else %}
+    <section class="onboarding-screen animate-in">
+      <div class="onboarding-shell">
+        <p class="onboarding-eyebrow">Quick onboarding</p>
+        <h2>Start saving research in one place.</h2>
+        <p class="launchpad-copy">
+          Login to continue with your account or register to create a new one and open the full app.
+        </p>
 
-    <div class="item-masonry">
-      {% for item in items %}
-        {% include "app/partials/item_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
+        <div class="onboarding-actions">
+          <a class="button invite-button" href="{{ login_url }}">Login</a>
+          <a class="button neutral-button" href="{{ register_url }}">Register</a>
+        </div>
+
+        <ol class="onboarding-steps">
+          <li>Create or join a research space.</li>
+          <li>Save links, notes, and images in one timeline.</li>
+          <li>Share progress with collaborators when you are ready.</li>
+        </ol>
+      </div>
+    </section>
+  {% endif %}
 {% endblock %}

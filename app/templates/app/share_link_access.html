@@ -1,0 +1,32 @@
+<!-- Author Petar Jovanovic -->
+{% extends "app/base.html" %}
+
+{% block content %}
+  <section class="onboarding-screen animate-in">
+    <div class="onboarding-shell">
+      <p class="onboarding-eyebrow">Shared Space</p>
+      <h2>{{ space.name }}</h2>
+      <p class="launchpad-copy">
+        {{ space.description|default:"Join this space as a viewer or request collaborator access." }}
+      </p>
+
+      {% if existing_request %}
+        <div class="empty-state compact">
+          <h3>Request status: {{ existing_request.status|lower }}</h3>
+          <p class="launchpad-copy">{{ existing_request.note }}</p>
+        </div>
+      {% endif %}
+
+      <div class="onboarding-actions">
+        <form method="post" action="{{ join_url }}">
+          {% csrf_token %}
+          <button class="button invite-button" type="submit">Join as Viewer</button>
+        </form>
+        <form method="post" action="{{ request_url }}">
+          {% csrf_token %}
+          <button class="button neutral-button" type="submit">Request Collaborator Access</button>
+        </form>
+      </div>
+    </div>
+  </section>
+{% endblock %}

@@ -8,14 +8,37 @@
       </a>
     </div>
 
-    <form class="form-stack mock-login-form" data-mock-login-form data-close-url="{{ close_mock_url }}">
+    <form
+      class="form-stack mock-login-form"
+      method="post"
+      action="{% if mock_panel == 'register' %}{{ register_action_url }}{% else %}{{ login_action_url }}{% endif %}"
+    >
+      {% csrf_token %}
+      <input type="hidden" name="next_url" value="{{ next_url }}">
       <p class="mock-panel-copy">
         {% if mock_panel == "register" %}
-          Create an account to preview the registration flow for the full app.
+          Kreirajte nalog za pravi ulazak u aplikaciju.
         {% else %}
-          Sign in to preview the login flow for the full app.
+          Prijavite se postojecim nalogom.
         {% endif %}
       </p>
+      {% if auth_error %}
+        <div class="mock-panel-feedback-stack">
+          <p class="mock-login-feedback error" aria-live="polite">
+            {% if auth_error == "invalid_login" %}
+              Wrong email or password.
+            {% elif auth_error == "missing_fields" %}
+              Fill in all required fields.
+            {% elif auth_error == "email_exists" %}
+              That email is already registered.
+            {% elif auth_error == "password_mismatch" %}
+              Passwords do not match.
+            {% elif auth_error == "weak_password" %}
+              Password must satisfy all listed rules.
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
       {% if mock_panel == "register" %}
         <label>
           <span class="sr-only">Full name</span>
@@ -28,13 +51,13 @@
           class="form-input"
           type="email"
           name="email"
-          value="{% if mock_panel == 'register' %}newuser@sidekick.app{% else %}demo@sidekick.app{% endif %}"
+          value="{% if mock_panel == 'register' %}newuser@sidekick.app{% else %}petar@example.com{% endif %}"
           required
         >
       </label>
       <label>
         <span class="sr-only">Password</span>
-        <input class="form-input" type="password" name="password" value="sidekick-demo" required>
+        <input class="form-input" type="password" name="password" value="Sidekick123!" required>
       </label>
       {% if mock_panel == "register" %}
         <ul class="rule-list">
@@ -44,7 +67,7 @@
         </ul>
         <label>
           <span class="sr-only">Confirm password</span>
-          <input class="form-input" type="password" name="confirm_password" value="sidekick-demo" required>
+          <input class="form-input" type="password" name="confirm_password" value="Sidekick123!" required>
         </label>
       {% endif %}
       <div class="mock-panel-switch">
@@ -58,10 +81,9 @@
       </div>
       <div class="modal-actions">
         <button class="invite-button" type="submit">
-          {% if mock_panel == "register" %}Create Account{% else %}Sign In{% endif %}
+          {% if mock_panel == "register" %}Register{% else %}Login{% endif %}
         </button>
       </div>
-      <p class="mock-login-feedback" data-mock-login-feedback aria-live="polite"></p>
     </form>
   </div>
 </div>

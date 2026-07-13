@@ -4,15 +4,71 @@
 {% block content %}
   <section class="section animate-in">
     <div class="profile-card">
-      <img class="profile-image" src="https://picsum.photos/seed/myprofile/200/200" alt="Profile" referrerpolicy="no-referrer">
+      <img class="profile-image" src="{{ profile_user.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
       <div class="profile-copy">
-        <h3>John Doe</h3>
-        <p>john.doe@example.com</p>
+        <h3>{{ profile_user.full_name }}</h3>
+        <p>{{ profile_user.email }}</p>
+        <div class="profile-stats">
+          <span class="status-pill">{{ profile_summary.owned_spaces }} owned spaces</span>
+          <span class="status-pill">{{ profile_summary.shared_spaces }} shared spaces</span>
+          <span class="status-pill">{{ profile_summary.saved_items }} saved items</span>
+        </div>
         <div class="space-actions">
-          <button class="button neutral-button" type="button">Edit Profile</button>
+          <a class="button neutral-button" href="{{ edit_profile_url }}">Edit Profile</a>
           <a class="button neutral-button" href="{{ password_url }}">Change Password</a>
         </div>
       </div>
+    </div>
+
+    <div class="settings-list">
+      <h3 class="section-title">Your Spaces</h3>
+      {% if owned_spaces %}
+        <div class="space-grid">
+          {% for space in owned_spaces %}
+            <a class="space-card" href="{% url 'app:space_detail' space.space_id %}">
+              <span class="space-thumb">
+                <img src="{{ space.image_url }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
+              </span>
+              <span class="space-copy">
+                <span class="space-name">{{ space.name }}</span>
+                <span class="muted">Owner</span>
+              </span>
+            </a>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state compact">
+          <h3>No spaces yet</h3>
+          <p class="launchpad-copy">Create a space from the home screen to start building your own content.</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="settings-list">
+      <h3 class="section-title">Your Recent Contributions</h3>
+      {% if profile_summary.recent_items %}
+        <div class="activity-list">
+          {% for item in profile_summary.recent_items %}
+            <div class="setting-row">
+              <span>
+                {% if item.item_type == "text" %}
+                  Text note in {{ item.space.name }}
+                {% elif item.item_type == "link" %}
+                  {{ item.title|default:"Saved link" }} in {{ item.space.name }}
+                {% else %}
+                  Image in {{ item.space.name }}
+                {% endif %}
+              </span>
+              <span class="muted">{{ item.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="empty-state compact">
+          <h3>No activity yet</h3>
+          <p class="launchpad-copy">Your notes, links, and uploaded images will appear here after you start saving them.</p>
+        </div>
+      {% endif %}
     </div>
 
     <div class="settings-list">

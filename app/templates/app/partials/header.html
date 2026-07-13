@@ -11,7 +11,7 @@
 
   <h1{% if active_tab == "home" and not selected_space %} data-app-title{% endif %}>
     {% if active_tab == "home" and not selected_space %}
-      DEMO APP
+      {% if current_user %}SIDEKICK{% else %}DEMO APP{% endif %}
     {% else %}
       {{ title }}
     {% endif %}
@@ -23,24 +23,36 @@
       <span class="icon sun-icon">{% include "app/partials/icons/sun.svg" %}</span>
     </button>
     {% if active_tab == "home" and not selected_space %}
-      <a class="button header-button" href="{{ login_url }}" data-login-link>
-        <span class="optional-label">Login</span>
-      </a>
-      <a class="button header-button" href="{{ register_url }}" data-register-link>
-        <span class="optional-label">Register</span>
-      </a>
-      <button class="button header-button" type="button" data-logout-button hidden>
-        <span class="optional-label">Odjava</span>
-      </button>
+      {% if current_user %}
+        <a class="button header-button" href="{{ create_space_url }}">
+          <span class="optional-label">New Space</span>
+        </a>
+        <form method="post" action="{{ logout_action_url }}">
+          {% csrf_token %}
+          <input type="hidden" name="next_url" value="{{ next_url }}">
+          <button class="button header-button" type="submit">
+            <span class="optional-label">Log Out</span>
+          </button>
+        </form>
+      {% else %}
+        <a class="button header-button" href="{{ login_url }}">
+          <span class="optional-label">Login</span>
+        </a>
+        <a class="button header-button" href="{{ register_url }}">
+          <span class="optional-label">Register</span>
+        </a>
+      {% endif %}
     {% else %}
       <a class="button header-button" href="{{ team_url }}">
         <span class="icon">{% include "app/partials/icons/users.svg" %}</span>
         <span class="optional-label">Team</span>
       </a>
-      <button class="button header-button" type="button">
-        <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
-        <span class="optional-label">Upload</span>
-      </button>
+      {% if can_add_item %}
+        <a class="button header-button" href="?dialog=add-item">
+          <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+          <span class="optional-label">Add Item</span>
+        </a>
+      {% endif %}
     {% endif %}
   </div>
 </header>

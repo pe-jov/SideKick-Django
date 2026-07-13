@@ -1,5 +1,255 @@
 # Author Petar Jovanovic
+from urllib.parse import urlparse
+
 from django.db import models
+from django.utils import timezone
+from django.utils.text import slugify
 
 
-# Models can be added later if the sample data should become editable.
+CURATED_AVATARS = [
+    "https://randomuser.me/api/portraits/men/32.jpg",
+    "https://randomuser.me/api/portraits/men/45.jpg",
+    "https://randomuser.me/api/portraits/men/68.jpg",
+    "https://randomuser.me/api/portraits/women/44.jpg",
+    "https://randomuser.me/api/portraits/men/75.jpg",
+    "https://randomuser.me/api/portraits/women/63.jpg",
+]
+
+SPACE_COVERS = {
+    "design-inspiration": "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",
+    "project-alpha": "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80",
+    "recipes": "https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=900&q=80",
+    "travel-ideas": "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80",
+}
+
+
+class TimestampedModel(models.Model):
+    created_at = models.DateTimeField(db_column="createdAt")
+    updated_at = models.DateTimeField(db_column="updatedAt")
+
+    class Meta:
+        abstract = True
+
+
+class User(TimestampedModel):
+    user_id = models.AutoField(primary_key=True, db_column="userId")
+    email = models.EmailField(unique=True)
+    password_hash = models.CharField(max_length=255, db_column="passwordHash")
+    full_name = models.CharField(max_length=255, db_column="fullName")
+
+    class Meta:
+        db_table = "USER"
+        ordering = ["user_id"]
+
+    def __str__(self):
+        return self.full_name
+
+    @property
+    def avatar_url(self):
+        if self.user_id:
+            return CURATED_AVATARS[(self.user_id - 1) % len(CURATED_AVATARS)]
+        return CURATED_AVATARS[0]
+
+
+class AuthToken(models.Model):
+    class ClientType(models.TextChoices):
+        WEB = "web", "Web"
+        EXTENSION = "extension", "Extension"
+
+    token_id = models.AutoField(primary_key=True, db_column="tokenId")
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="auth_tokens", db_column="userId"
+    )
+    token_value = models.CharField(max_length=255, unique=True, db_column="tokenValue")
+    client_type = models.CharField(
+        max_length=20, choices=ClientType.choices, db_column="clientType"
+    )
+    issued_at = models.DateTimeField(db_column="issuedAt")
+    expires_at = models.DateTimeField(db_column="expiresAt", blank=True, null=True)
+    is_revoked = models.BooleanField(default=False, db_column="isRevoked")
+
+    class Meta:
+        db_table = "AUTH_TOKEN"
+        ordering = ["token_id"]
+
+    def __str__(self):
+        return f"{self.user.full_name} ({self.client_type})"
+
+
+class ResearchSpace(TimestampedModel):
+    space_id = models.AutoField(primary_key=True, db_column="spaceId")
+    owner = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="owned_spaces", db_column="ownerId"
+    )
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    is_archived = models.BooleanField(default=False, db_column="isArchived")
+
+    class Meta:
+        db_table = "RESEARCH_SPACE"
+        ordering = ["space_id"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def image_url(self):
+        return SPACE_COVERS.get(
+            slugify(self.name),
+            "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
+        )
+
+
+class Membership(TimestampedModel):
+    class Role(models.TextChoices):
+        COLLABORATOR = "collaborator", "Collaborator"
+        VIEWER = "viewer", "Viewer"
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        REMOVED = "removed", "Removed"
+
+    membership_id = models.AutoField(primary_key=True, db_column="membershipId")
+    space = models.ForeignKey(
+        ResearchSpace, on_delete=models.CASCADE, related_name="memberships", db_column="spaceId"
+    )
+    user = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="memberships", db_column="userId"
+    )
+    joined_via = models.ForeignKey(
+        "ShareLink",
+        on_delete=models.SET_NULL,
+        related_name="granted_memberships",
+        db_column="joinedVia",
+        blank=True,
+        null=True,
+    )
+    role = models.CharField(max_length=20, choices=Role.choices)
+    status = models.CharField(max_length=20, choices=Status.choices)
+
+    class Meta:
+        db_table = "MEMBERSHIP"
+        ordering = ["membership_id"]
+        constraints = [
+            models.UniqueConstraint(fields=["space", "user"], name="uq_membership_space_user")
+        ]
+
+    def __str__(self):
+        return f"{self.user.full_name} in {self.space.name}"
+
+
+class CollaborationRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+
+    request_id = models.AutoField(primary_key=True, db_column="requestId")
+    space = models.ForeignKey(
+        ResearchSpace,
+        on_delete=models.CASCADE,
+        related_name="collaboration_requests",
+        db_column="spaceId",
+    )
+    requester = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name="requested_collaborations",
+        db_column="requesterId",
+    )
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        related_name="resolved_collaborations",
+        db_column="resolvedBy",
+        blank=True,
+        null=True,
+    )
+    status = models.CharField(max_length=20, choices=Status.choices)
+    message = models.TextField(blank=True)
+    requested_at = models.DateTimeField(db_column="requestedAt")
+    resolved_at = models.DateTimeField(db_column="resolvedAt", blank=True, null=True)
+
+    class Meta:
+        db_table = "COLLABORATION_REQUEST"
+        ordering = ["request_id"]
+
+    def __str__(self):
+        return f"{self.requester.full_name} -> {self.space.name}"
+
+
+class Item(TimestampedModel):
+    class ItemType(models.TextChoices):
+        TEXT = "text", "Text"
+        LINK = "link", "Link"
+        IMAGE = "image", "Image"
+
+    class SourcePlatform(models.TextChoices):
+        WEB = "web", "Web"
+        EXTENSION = "extension", "Extension"
+
+    item_id = models.AutoField(primary_key=True, db_column="itemId")
+    space = models.ForeignKey(
+        ResearchSpace, on_delete=models.CASCADE, related_name="items", db_column="spaceId"
+    )
+    added_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="items", db_column="addedBy"
+    )
+    item_type = models.CharField(max_length=20, choices=ItemType.choices, db_column="itemType")
+    content_text = models.TextField(blank=True, db_column="contentText")
+    source_url = models.CharField(max_length=500, blank=True, db_column="sourceUrl")
+    image_path = models.CharField(max_length=500, blank=True, db_column="imagePath")
+    title = models.CharField(max_length=255, blank=True)
+    note = models.TextField(blank=True)
+    source_platform = models.CharField(
+        max_length=20, choices=SourcePlatform.choices, db_column="sourcePlatform"
+    )
+    captured_url = models.CharField(max_length=500, blank=True, db_column="capturedUrl")
+    page_title = models.CharField(max_length=255, blank=True, db_column="pageTitle")
+
+    class Meta:
+        db_table = "ITEM"
+        ordering = ["item_id"]
+
+    def __str__(self):
+        return f"{self.item_type} in {self.space.name}"
+
+    @property
+    def domain(self):
+        url = self.source_url or self.captured_url
+        if not url:
+            return ""
+        return urlparse(url).netloc
+
+    @property
+    def image_url(self):
+        if self.image_path:
+            return self.image_path
+        if self.source_url:
+            return self.source_url
+        return ""
+
+
+class ShareLink(models.Model):
+    share_link_id = models.AutoField(primary_key=True, db_column="shareLinkId")
+    space = models.ForeignKey(
+        ResearchSpace, on_delete=models.CASCADE, related_name="share_links", db_column="spaceId"
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.PROTECT, related_name="share_links", db_column="createdBy"
+    )
+    token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(db_column="createdAt")
+    expires_at = models.DateTimeField(db_column="expiresAt", blank=True, null=True)
+    is_active = models.BooleanField(default=True, db_column="isActive")
+
+    class Meta:
+        db_table = "SHARE_LINK"
+        ordering = ["share_link_id"]
+
+    def __str__(self):
+        return f"{self.space.name} share link"
+
+    @property
+    def is_available(self):
+        return self.is_active and (self.expires_at is None or self.expires_at > timezone.now())

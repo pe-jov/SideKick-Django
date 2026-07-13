@@ -2,42 +2,78 @@
 {% extends "app/base.html" %}
 
 {% block content %}
-  <div class="space-hero animate-in">
-    <div class="space-hero-image">
-      <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
-    </div>
-    <div>
-      <h2>{{ space.name }}</h2>
-      <p>{{ space.role }} • {{ item_count }} Items</p>
-      <div class="space-actions">
-        {% if space.role == "Owner" %}
-          <button class="button header-button" type="button">Share Link</button>
-          <a class="button header-button destructive-button" href="{{ delete_space_url }}">Delete Space</a>
-        {% else %}
-          <span class="status-pill">Request status visible in Team</span>
-        {% endif %}
+  <div
+    class="space-capture-surface"
+    data-space-capture-surface
+    {% if can_add_item %}
+      data-direct-upload="true"
+      data-save-url="{{ save_item_url }}"
+      data-space-id="{{ selected_space.id }}"
+    {% endif %}
+  >
+    <div class="space-capture-overlay" data-space-capture-overlay hidden>
+      <div class="space-capture-overlay__card">
+        <p class="space-capture-overlay__eyebrow">Drop into {{ space.name }}</p>
+        <h3>Save an image, link, or note</h3>
+        <p>Release anywhere on the page and we will add it straight into this space.</p>
       </div>
     </div>
+
+    <div class="space-hero animate-in">
+      <div class="space-hero-image">
+        <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
+      </div>
+      <div>
+        <h2>{{ space.name }}</h2>
+        <p>{{ space.role }} • {{ item_count }} Items</p>
+        <div class="space-actions">
+          {% if can_add_item %}
+            <a class="button header-button" href="?dialog=add-item">Add Item</a>
+          {% endif %}
+          {% if space.role == "Owner" %}
+            <a class="button header-button" href="?dialog=edit-space">Edit Space</a>
+            <a class="button header-button" href="{{ share_space_url }}">Share Link</a>
+            <a class="button header-button destructive-button" href="{{ delete_space_url }}">Delete Space</a>
+          {% else %}
+            <span class="status-pill">Access requests live in Team</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <section class="section animate-in slow">
+      <div class="drop-zone" data-drop-zone>
+        <h3>Drop into this space</h3>
+        <p>Add a text note, save a link, or upload an image from anywhere on this page.</p>
+        <div class="space-meta-row">
+          <span class="status-pill">Text</span>
+          <span class="status-pill">Links</span>
+          <span class="status-pill">Images</span>
+        </div>
+      </div>
+    {% if can_add_item %}
+      <form class="sr-only" data-space-upload-form>
+        {% csrf_token %}
+      </form>
+    {% endif %}
+
+    <div class="filter-toolbar">
+      {% include "app/partials/filter_pills.html" with filters=item_filter_links title="Type" row_class="compact" %}
+      {% include "app/partials/filter_pills.html" with filters=user_filter_links title="Contributors" row_class="compact" %}
+    </div>
+
+    {% if items %}
+      <div class="item-masonry">
+        {% for item in items %}
+          {% include "app/partials/item_card.html" %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-state">
+        <h3>This space is empty</h3>
+        <p class="launchpad-copy">Use Add Item to save your first note, link, or image here.</p>
+      </div>
+    {% endif %}
+    </section>
   </div>
-
-  <section class="section animate-in slow">
-    <div class="drop-zone" data-drop-zone>
-      <h3>Drop into this space</h3>
-      <p>Web demo supports drag & drop, paste, and upload entry points for text, links, and images.</p>
-      <div class="space-meta-row">
-        <span class="status-pill">Drag & Drop</span>
-        <span class="status-pill">Paste</span>
-        <span class="status-pill">Upload</span>
-      </div>
-    </div>
-
-    {% include "app/partials/filter_pills.html" with filters=item_filter_links %}
-    {% include "app/partials/filter_pills.html" with filters=user_filter_links row_class="subfilter-row" %}
-
-    <div class="item-masonry">
-      {% for item in items %}
-        {% include "app/partials/item_card.html" %}
-      {% endfor %}
-    </div>
-  </section>
 {% endblock %}

@@ -15,7 +15,8 @@
     </div>
 
     {% if action_modal.type == "change-password" %}
-      <form class="form-stack" data-change-password-form>
+      <form class="form-stack" method="post" action="{{ change_password_url }}" data-change-password-form>
+        {% csrf_token %}
         <p class="mock-panel-copy">Enter the current password before setting a new one.</p>
         <label>
           <span class="sr-only">Current password</span>
@@ -35,18 +36,196 @@
           {% endfor %}
         </ul>
         <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
           <button class="invite-button" type="submit">Save Password</button>
         </div>
         <p class="mock-login-feedback" data-password-feedback aria-live="polite"></p>
       </form>
-    {% else %}
-      <div class="form-stack">
-        <p class="mock-panel-copy">{{ action_modal.copy }}</p>
+    {% elif action_modal.type == "edit-profile" %}
+      <form class="form-stack" method="post" action="{{ update_profile_url }}">
+        {% csrf_token %}
+        <label>
+          <span class="sr-only">Full name</span>
+          <input class="form-input" type="text" name="full_name" value="{{ action_modal.full_name }}" required>
+        </label>
+        <label>
+          <span class="sr-only">Email</span>
+          <input class="form-input" type="email" name="email" value="{{ action_modal.email }}" required>
+        </label>
         <div class="modal-actions">
           <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="button">{{ action_modal.confirm_label }}</button>
+          <button class="invite-button" type="submit">Save Profile</button>
         </div>
-      </div>
+      </form>
+    {% elif action_modal.type == "create-space" %}
+      <form class="form-stack" method="post" action="{{ save_space_url }}">
+        {% csrf_token %}
+        <label>
+          <span class="sr-only">Space name</span>
+          <input class="form-input" type="text" name="name" placeholder="Space name" required>
+        </label>
+        <label>
+          <span class="sr-only">Description</span>
+          <textarea class="form-textarea" name="description" placeholder="Description"></textarea>
+        </label>
+        <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="invite-button" type="submit">Create Space</button>
+        </div>
+      </form>
+    {% elif action_modal.type == "edit-space" %}
+      <form class="form-stack" method="post" action="{{ update_space_url }}">
+        {% csrf_token %}
+        <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <label>
+          <span class="sr-only">Space name</span>
+          <input class="form-input" type="text" name="name" value="{{ action_modal.space_name }}" required>
+        </label>
+        <label>
+          <span class="sr-only">Description</span>
+          <textarea class="form-textarea" name="description" placeholder="Description">{{ action_modal.space_description }}</textarea>
+        </label>
+        <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="invite-button" type="submit">Save Space</button>
+        </div>
+      </form>
+    {% elif action_modal.type == "add-item" %}
+      <form class="form-stack" method="post" action="{{ save_item_url }}" enctype="multipart/form-data" data-item-form>
+        {% csrf_token %}
+        <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <p class="mock-panel-copy">Saving into {{ action_modal.space_name }}</p>
+        <label>
+          <span class="sr-only">Quick capture</span>
+          <textarea class="form-textarea" name="quick_capture" placeholder="Paste text or a link here and SideKick will prefill the right fields." data-quick-capture></textarea>
+        </label>
+        <label>
+          <span class="sr-only">Item type</span>
+          <select class="form-input" name="item_type" data-item-type-select>
+            <option value="text">Text note</option>
+            <option value="link">Link</option>
+            <option value="image">Image upload</option>
+          </select>
+        </label>
+        <div data-item-fields="text">
+          <label>
+            <span class="sr-only">Text note</span>
+            <textarea class="form-textarea" name="content_text" placeholder="Write your note"></textarea>
+          </label>
+        </div>
+        <div data-item-fields="link" hidden>
+          <label>
+            <span class="sr-only">Link URL</span>
+            <input class="form-input" type="url" name="source_url" placeholder="https://example.com">
+          </label>
+          <label>
+            <span class="sr-only">Link title</span>
+            <input class="form-input" type="text" name="link_title" placeholder="Title">
+          </label>
+        </div>
+        <div data-item-fields="image" hidden>
+          <label>
+            <span class="sr-only">Image file</span>
+            <input class="form-input" type="file" name="image_file" accept="image/*" data-image-file-input>
+          </label>
+          <label>
+            <span class="sr-only">Image URL</span>
+            <input class="form-input" type="url" name="image_source_url" placeholder="https://example.com/image.jpg">
+          </label>
+          <label>
+            <span class="sr-only">Image title</span>
+            <input class="form-input" type="text" name="image_title" placeholder="Caption or title">
+          </label>
+        </div>
+        <label>
+          <span class="sr-only">Note</span>
+          <textarea class="form-textarea" name="note" placeholder="Optional note"></textarea>
+        </label>
+        <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="invite-button" type="submit">Save Item</button>
+        </div>
+      </form>
+    {% elif action_modal.type == "invite-member" %}
+      <form class="form-stack" method="post" action="{{ invite_member_url }}">
+        {% csrf_token %}
+        <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <p class="mock-panel-copy">Invite an existing registered user into {{ action_modal.space_name }}.</p>
+        <label>
+          <span class="sr-only">Email</span>
+          <input class="form-input" type="email" name="email" placeholder="person@example.com" required>
+        </label>
+        <label>
+          <span class="sr-only">Role</span>
+          <select class="form-input" name="role">
+            <option value="collaborator">Collaborator</option>
+            <option value="viewer">Viewer</option>
+          </select>
+        </label>
+        <div class="modal-actions">
+          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="invite-button" type="submit">Send Invite</button>
+        </div>
+      </form>
+    {% elif action_modal.type == "share-link" %}
+      {% if action_modal.share_url %}
+        <div class="form-stack">
+          <p class="mock-panel-copy">Anyone with this link can join the space as a viewer or request collaborator access.</p>
+          <input class="form-input" type="text" value="{{ action_modal.share_url }}" readonly>
+          <div class="modal-actions">
+            <form method="post" action="{% url 'app:revoke_share_link' %}">
+              {% csrf_token %}
+              <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+              <button class="button neutral-button" type="submit">Revoke Link</button>
+            </form>
+            <a class="button neutral-button" href="{{ close_dialog_url }}">Close</a>
+          </div>
+        </div>
+      {% else %}
+        <form class="form-stack" method="post" action="{% url 'app:create_share_link' %}">
+          {% csrf_token %}
+          <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+          <p class="mock-panel-copy">Create a share link for this space.</p>
+          <div class="modal-actions">
+            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="invite-button" type="submit">Create Link</button>
+          </div>
+        </form>
+      {% endif %}
+    {% else %}
+      {% if action_modal.action_url %}
+        <form class="form-stack" method="post" action="{{ action_modal.action_url }}">
+          {% csrf_token %}
+          {% if action_modal.item_id %}
+            <input type="hidden" name="item_id" value="{{ action_modal.item_id }}">
+          {% endif %}
+          {% if action_modal.member_id %}
+            <input type="hidden" name="member_id" value="{{ action_modal.member_id }}">
+          {% endif %}
+          {% if action_modal.request_id %}
+            <input type="hidden" name="request_id" value="{{ action_modal.request_id }}">
+          {% endif %}
+          {% if action_modal.decision %}
+            <input type="hidden" name="decision" value="{{ action_modal.decision }}">
+          {% endif %}
+          {% if action_modal.space_id %}
+            <input type="hidden" name="space_id" value="{{ action_modal.space_id }}">
+          {% endif %}
+          <p class="mock-panel-copy">{{ action_modal.copy }}</p>
+          <div class="modal-actions">
+            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="invite-button" type="submit">{{ action_modal.confirm_label }}</button>
+          </div>
+        </form>
+      {% else %}
+        <div class="form-stack">
+          <p class="mock-panel-copy">{{ action_modal.copy }}</p>
+          <div class="modal-actions">
+            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="invite-button" type="button">{{ action_modal.confirm_label }}</button>
+          </div>
+        </div>
+      {% endif %}
     {% endif %}
   </section>
 </div>
