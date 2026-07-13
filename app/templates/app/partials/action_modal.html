@@ -1,5 +1,5 @@
 <!-- Author Petar Jovanovic -->
-<div class="modal-backdrop" data-modal-backdrop>
+<div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_dialog_url }}" data-overlay-kind="action-modal">
   <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
     <div class="modal-header">
       <h2 id="action-modal-title">
@@ -73,10 +73,11 @@
           <button class="invite-button" type="submit">Create Space</button>
         </div>
       </form>
-    {% elif action_modal.type == "edit-space" %}
+    {% elif action_modal.type == "space-settings" %}
       <form class="form-stack" method="post" action="{{ update_space_url }}">
         {% csrf_token %}
         <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <p class="mock-panel-copy">Update the space title and description here.</p>
         <label>
           <span class="sr-only">Space name</span>
           <input class="form-input" type="text" name="name" value="{{ action_modal.space_name }}" required>
@@ -85,65 +86,51 @@
           <span class="sr-only">Description</span>
           <textarea class="form-textarea" name="description" placeholder="Description">{{ action_modal.space_description }}</textarea>
         </label>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Save Space</button>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Save Space</button>
         </div>
       </form>
+      <div class="modal-danger-panel">
+        <p class="mock-panel-copy">Delete this space and remove all items and access tied to it.</p>
+        <form method="post" action="{% url 'app:delete_space' %}">
+            {% csrf_token %}
+            <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+            <button class="button destructive-outline-button modal-action-button modal-action-button--pill" type="submit">Delete Space</button>
+        </form>
+      </div>
     {% elif action_modal.type == "add-item" %}
       <form class="form-stack" method="post" action="{{ save_item_url }}" enctype="multipart/form-data" data-item-form>
         {% csrf_token %}
-        <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <input type="hidden" name="space_id" value="{{ action_modal.space_id }}">
+        <input type="hidden" name="item_type" value="text" data-item-type-hidden>
+        <input type="hidden" name="content_text" data-content-hidden>
+        <input type="hidden" name="source_url" data-source-hidden>
+        <input type="hidden" name="link_title" data-link-title-hidden>
         <p class="mock-panel-copy">Saving into {{ action_modal.space_name }}</p>
-        <label>
-          <span class="sr-only">Quick capture</span>
-          <textarea class="form-textarea" name="quick_capture" placeholder="Paste text or a link here and SideKick will prefill the right fields." data-quick-capture></textarea>
-        </label>
-        <label>
-          <span class="sr-only">Item type</span>
-          <select class="form-input" name="item_type" data-item-type-select>
-            <option value="text">Text note</option>
-            <option value="link">Link</option>
-            <option value="image">Image upload</option>
-          </select>
-        </label>
-        <div data-item-fields="text">
-          <label>
-            <span class="sr-only">Text note</span>
-            <textarea class="form-textarea" name="content_text" placeholder="Write your note"></textarea>
-          </label>
+        <div class="item-capture-status">
+          <span class="status-pill" data-capture-status>Text</span>
         </div>
-        <div data-item-fields="link" hidden>
-          <label>
-            <span class="sr-only">Link URL</span>
-            <input class="form-input" type="url" name="source_url" placeholder="https://example.com">
-          </label>
-          <label>
-            <span class="sr-only">Link title</span>
-            <input class="form-input" type="text" name="link_title" placeholder="Title">
-          </label>
+        <input class="sr-only" type="file" name="image_file" accept="image/*" data-image-file-input>
+        <div class="item-capture-panel" data-capture-panel data-capture-mode="idle">
+          <textarea
+            class="form-textarea item-capture-field"
+            placeholder="Paste a link, press Ctrl+V, or start typing."
+            data-item-capture-field
+          ></textarea>
+          <div class="item-capture-preview" data-upload-state hidden>
+            <img class="item-capture-preview-image" src="" alt="Selected image" data-upload-preview-image>
+            <p class="item-capture-upload-name" data-upload-filename>No file chosen</p>
+          </div>
         </div>
-        <div data-item-fields="image" hidden>
-          <label>
-            <span class="sr-only">Image file</span>
-            <input class="form-input" type="file" name="image_file" accept="image/*" data-image-file-input>
-          </label>
-          <label>
-            <span class="sr-only">Image URL</span>
-            <input class="form-input" type="url" name="image_source_url" placeholder="https://example.com/image.jpg">
-          </label>
-          <label>
-            <span class="sr-only">Image title</span>
-            <input class="form-input" type="text" name="image_title" placeholder="Caption or title">
-          </label>
-        </div>
-        <label>
-          <span class="sr-only">Note</span>
-          <textarea class="form-textarea" name="note" placeholder="Optional note"></textarea>
-        </label>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Save Item</button>
+        <button class="button neutral-button item-upload-button" type="button" data-upload-trigger>
+          <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+          <span>Upload image</span>
+        </button>
+        <p class="mock-login-feedback" data-item-form-feedback aria-live="polite"></p>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Save</button>
         </div>
       </form>
     {% elif action_modal.type == "invite-member" %}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SideKick Extension</title>
+    <link rel="stylesheet" href="sidepanel.css">
+  </head>
+  <body class="extension-disconnected">
+    <div class="panel-shell">
+      <header class="panel-topbar">
+        <div class="panel-brand">SIDEKICK</div>
+        <div class="panel-actions">
+          <button type="button" class="panel-chip" data-open-web hidden>Open tab</button>
+          <button type="button" class="panel-chip panel-chip--dark" data-logout hidden>Disconnect</button>
+        </div>
+      </header>
+
+      <main class="panel-main">
+        <section class="auth-screen" data-auth-screen>
+          <input
+            class="auth-url-input"
+            type="url"
+            value="http://127.0.0.1:8000"
+            data-base-url
+            aria-label="App URL"
+          >
+
+          <div class="auth-buttons">
+            <button type="button" class="panel-button panel-button--primary" data-open-login-tab>Open SideKick</button>
+          </div>
+        </section>
+
+        <section class="app-screen" data-app-screen>
+          <iframe class="app-frame" title="SideKick" data-app-frame></iframe>
+        </section>
+      </main>
+    </div>
+
+    <script src="sidepanel.js"></script>
+  </body>
+  </html>

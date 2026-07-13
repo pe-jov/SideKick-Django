@@ -3,11 +3,19 @@
 
 {% block content %}
   {% if current_user %}
-    <section class="section">
-      {% include "app/partials/filter_pills.html" with filters=space_filter_links %}
+    <section class="section home-space-section" data-filter-scope="home-spaces">
+      <div class="home-section-toolbar home-space-toolbar">
+        <div class="home-toolbar-main">
+          <h2 class="section-title">Spaces</h2>
+          {% include "app/partials/filter_pills.html" with filters=space_filter_links row_class="compact" filter_key="space-role" %}
+        </div>
+        <a class="button toolbar-add-button" href="{{ create_space_url }}" aria-label="Create space">
+          <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+        </a>
+      </div>
 
       {% if spaces %}
-        <div class="space-grid">
+        <div class="space-grid" data-filter-target="spaces">
           {% for space in spaces %}
             {% include "app/partials/space_card.html" %}
           {% endfor %}
@@ -21,40 +29,62 @@
       {% endif %}
     </section>
 
-    <section class="section">
-      <h2 class="section-title">Recent Items</h2>
+    <section
+      class="section home-inbox-section"
+      data-filter-scope="home-inbox"
+      data-space-capture-surface
+      data-drop-zone
+      data-direct-upload="true"
+      data-save-url="{{ save_item_url }}"
+      data-space-id="{{ home_capture_space_id }}"
+      data-move-url="{{ move_item_url }}"
+    >
+      <div class="space-capture-overlay" data-space-capture-overlay hidden>
+        <div class="space-capture-overlay__card">
+          <p class="space-capture-overlay__eyebrow">Inbox</p>
+          <h3>Drop to sort later</h3>
+          <p>Paste or drop anything here, then drag it into one of your spaces above.</p>
+        </div>
+      </div>
+
+      <div class="home-section-toolbar home-inbox-header">
+        <div class="home-toolbar-main">
+          <h2 class="section-title">Inbox</h2>
+          {% include "app/partials/filter_pills.html" with filters=item_filter_links row_class="compact" filter_key="item-type" %}
+        </div>
+        <a class="button toolbar-add-button" href="{{ inbox_add_item_url }}" aria-label="Add item to inbox">
+          <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+        </a>
+      </div>
+
+      <form class="sr-only" data-space-upload-form>
+        {% csrf_token %}
+      </form>
+
       {% if items %}
-        <div class="item-masonry">
+        <div class="item-masonry" data-filter-target="items">
           {% for item in items %}
             {% include "app/partials/item_card.html" %}
           {% endfor %}
         </div>
       {% else %}
-        <div class="empty-state">
-          <h3>No saved items yet</h3>
-          <p class="launchpad-copy">Open a space and add a text note, a link, or an uploaded image. Everything is saved in the local database.</p>
+        <div class="empty-state empty-state--inbox">
+          <p>Inbox empty</p>
         </div>
       {% endif %}
     </section>
   {% else %}
     <section class="onboarding-screen animate-in">
-      <div class="onboarding-shell">
-        <p class="onboarding-eyebrow">Quick onboarding</p>
+      <div class="onboarding-shell onboarding-shell--home">
         <h2>Start saving research in one place.</h2>
-        <p class="launchpad-copy">
-          Login to continue with your account or register to create a new one and open the full app.
+        <p class="launchpad-copy onboarding-copy">
+          Login or create an account to open SideKick.
         </p>
 
-        <div class="onboarding-actions">
-          <a class="button invite-button" href="{{ login_url }}">Login</a>
-          <a class="button neutral-button" href="{{ register_url }}">Register</a>
+        <div class="onboarding-actions onboarding-actions--dual">
+          <a class="button onboarding-action onboarding-action--primary" href="{{ login_url }}">Login</a>
+          <a class="button onboarding-action onboarding-action--secondary" href="{{ register_url }}">Register</a>
         </div>
-
-        <ol class="onboarding-steps">
-          <li>Create or join a research space.</li>
-          <li>Save links, notes, and images in one timeline.</li>
-          <li>Share progress with collaborators when you are ready.</li>
-        </ol>
       </div>
     </section>
   {% endif %}

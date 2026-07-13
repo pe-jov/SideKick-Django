@@ -5,6 +5,7 @@
   <div
     class="space-capture-surface"
     data-space-capture-surface
+    data-drop-zone
     {% if can_add_item %}
       data-direct-upload="true"
       data-save-url="{{ save_item_url }}"
@@ -20,37 +21,32 @@
     </div>
 
     <div class="space-hero animate-in">
-      <div class="space-hero-image">
-        <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
-      </div>
-      <div>
-        <h2>{{ space.name }}</h2>
-        <p>{{ space.role }} • {{ item_count }} Items</p>
-        <div class="space-actions">
-          {% if can_add_item %}
-            <a class="button header-button" href="?dialog=add-item">Add Item</a>
-          {% endif %}
-          {% if space.role == "Owner" %}
-            <a class="button header-button" href="?dialog=edit-space">Edit Space</a>
-            <a class="button header-button" href="{{ share_space_url }}">Share Link</a>
-            <a class="button header-button destructive-button" href="{{ delete_space_url }}">Delete Space</a>
-          {% else %}
-            <span class="status-pill">Access requests live in Team</span>
-          {% endif %}
+      <div class="space-hero-copy">
+        <div>
+          <h2>{{ space.name }}</h2>
+          <p>{{ space.role }} • {{ item_count }} Items</p>
         </div>
+      </div>
+      <div class="space-hero-actions">
+        {% if can_add_item %}
+          <a class="button header-button primary-header-button" href="?dialog=add-item">
+            <span class="icon">{% include "app/partials/icons/plus.svg" %}</span>
+            <span class="optional-label">Add Item</span>
+          </a>
+        {% endif %}
+        <a class="button header-button" href="{{ team_url }}">
+          <span class="icon">{% include "app/partials/icons/users.svg" %}</span>
+          <span class="optional-label">Team</span>
+        </a>
+        {% if space.role == "Owner" %}
+          <a class="button header-button" href="{{ space_settings_url }}">
+            <span class="optional-label">Edit Space</span>
+          </a>
+        {% endif %}
       </div>
     </div>
 
-    <section class="section animate-in slow">
-      <div class="drop-zone" data-drop-zone>
-        <h3>Drop into this space</h3>
-        <p>Add a text note, save a link, or upload an image from anywhere on this page.</p>
-        <div class="space-meta-row">
-          <span class="status-pill">Text</span>
-          <span class="status-pill">Links</span>
-          <span class="status-pill">Images</span>
-        </div>
-      </div>
+    <section class="section animate-in slow" data-filter-scope="space-items">
     {% if can_add_item %}
       <form class="sr-only" data-space-upload-form>
         {% csrf_token %}
@@ -58,12 +54,12 @@
     {% endif %}
 
     <div class="filter-toolbar">
-      {% include "app/partials/filter_pills.html" with filters=item_filter_links title="Type" row_class="compact" %}
-      {% include "app/partials/filter_pills.html" with filters=user_filter_links title="Contributors" row_class="compact" %}
+      {% include "app/partials/filter_pills.html" with filters=item_filter_links filter_title="Type" row_class="compact" filter_key="item-type" %}
+      {% include "app/partials/filter_pills.html" with filters=user_filter_links filter_title="Contributors" row_class="compact" filter_key="added-by" %}
     </div>
 
     {% if items %}
-      <div class="item-masonry">
+      <div class="item-masonry" data-filter-target="items">
         {% for item in items %}
           {% include "app/partials/item_card.html" %}
         {% endfor %}

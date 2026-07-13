@@ -4,7 +4,7 @@ import re
 import secrets
 from html import unescape
 from urllib.error import URLError
-from urllib.parse import urlencode, urlparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 from urllib.request import Request, urlopen
 from django.contrib import messages
 from django.contrib.auth.hashers import check_password, make_password
@@ -24,7 +24,9 @@ from .context import (
     accessible_spaces,
     filter_items,
     filter_spaces,
+    get_or_create_universal_space,
     get_collaboration_requests,
+    get_current_auth_token_value,
     get_current_user,
     get_membership,
     get_profile_user,
@@ -33,6 +35,7 @@ from .context import (
     get_space_items,
     get_space,
     get_user_profile_summary,
+    is_universal_space,
     item_user_filters,
     serialize_item,
     serialize_space,
@@ -74,7 +77,7 @@ def password_validation_error(password):
     return None
 
 
-def read_url_title(url):
+def fetch_html_document(url):
     try:
         request = Request(
             url,
@@ -86,15 +89,162 @@ def read_url_title(url):
             content_type = response.headers.get("Content-Type", "")
             if "text/html" not in content_type:
                 return ""
-            html = response.read(200000).decode("utf-8", errors="ignore")
+            return response.read(200000).decode("utf-8", errors="ignore")
     except (ValueError, URLError, TimeoutError):
         return ""
 
-    match = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
-    if not match:
+
+def clean_metadata_title(value):
+    title = unescape(re.sub(r"\s+", " ", value or "")).strip()
+    if not title:
         return ""
-    title = unescape(re.sub(r"\s+", " ", match.group(1))).strip()
     return title[:255]
+
+
+def title_looks_like_url(title):
+    if not title:
+        return True
+    normalized = title.strip().lower()
+    if normalized.startswith("http://") or normalized.startswith("https://"):
+        return True
+    if "/" in normalized and "." in normalized and " " not in normalized:
+        return True
+    return False
+
+
+def extract_title_from_html(html):
+    if not html:
+        return ""
+
+    metadata_patterns = [
+        r'<meta[^>]+property=["\']og:title["\'][^>]+content=["\'](.*?)["\']',
+        r'<meta[^>]+content=["\'](.*?)["\'][^>]+property=["\']og:title["\']',
+        r'<meta[^>]+name=["\']twitter:title["\'][^>]+content=["\'](.*?)["\']',
+        r'<meta[^>]+content=["\'](.*?)["\'][^>]+name=["\']twitter:title["\']',
+        r'<meta[^>]+itemprop=["\']headline["\'][^>]+content=["\'](.*?)["\']',
+        r'<meta[^>]+content=["\'](.*?)["\'][^>]+itemprop=["\']headline["\']',
+        r'<meta[^>]+name=["\']title["\'][^>]+content=["\'](.*?)["\']',
+        r'<meta[^>]+content=["\'](.*?)["\'][^>]+name=["\']title["\']',
+        r"<title[^>]*>(.*?)</title>",
+    ]
+    for pattern in metadata_patterns:
+        match = re.search(pattern, html, re.IGNORECASE | re.DOTALL)
+        if not match:
+            continue
+        title = clean_metadata_title(match.group(1))
+        if title and not title_looks_like_url(title):
+            return title
+
+    json_ld_matches = re.findall(
+        r'<script[^>]+type=["\']application/ld\+json["\'][^>]*>(.*?)</script>',
+        html,
+        re.IGNORECASE | re.DOTALL,
+    )
+    for block in json_ld_matches:
+        try:
+            payload = json.loads(block.strip())
+        except json.JSONDecodeError:
+            continue
+        title = extract_title_from_json_ld(payload)
+        if title:
+            return title
+
+    return ""
+
+
+def extract_title_from_json_ld(payload):
+    if isinstance(payload, list):
+        for item in payload:
+            title = extract_title_from_json_ld(item)
+            if title:
+                return title
+        return ""
+
+    if not isinstance(payload, dict):
+        return ""
+
+    for key in ("headline", "name", "title"):
+        value = payload.get(key)
+        if isinstance(value, str):
+            title = clean_metadata_title(value)
+            if title and not title_looks_like_url(title):
+                return title
+
+    for key in ("@graph", "mainEntity", "itemListElement"):
+        nested = payload.get(key)
+        title = extract_title_from_json_ld(nested)
+        if title:
+            return title
+
+    return ""
+
+
+def read_url_title(url):
+    html = fetch_html_document(url)
+    return extract_title_from_html(html)
+
+
+def title_from_url_path(url):
+    parsed = urlparse(url)
+    path_parts = [part for part in parsed.path.split("/") if part]
+    if not path_parts:
+        return ""
+    candidate = path_parts[-1]
+    candidate = re.sub(r"\.[A-Za-z0-9]+$", "", candidate)
+    candidate = re.sub(r"[-_]+", " ", candidate)
+    candidate = re.sub(r"\s+", " ", candidate).strip()
+    if not candidate or len(candidate) < 4:
+        return ""
+    if re.fullmatch(r"[0-9]+", candidate):
+        return ""
+    return candidate.title()[:255]
+
+
+def title_from_domain(url):
+    hostname = (urlparse(url).hostname or "").lower().replace("www.", "")
+    if not hostname:
+        return ""
+    return hostname[:255]
+
+
+def fallback_link_title(url):
+    return title_from_url_path(url) or title_from_domain(url)
+
+
+def oembed_endpoint_for_url(url):
+    hostname = (urlparse(url).hostname or "").lower()
+    if hostname in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}:
+        return f"https://www.youtube.com/oembed?{urlencode({'url': url, 'format': 'json'})}"
+    if hostname in {"vimeo.com", "www.vimeo.com", "player.vimeo.com"}:
+        return f"https://vimeo.com/api/oembed.json?{urlencode({'url': url})}"
+    return ""
+
+
+def read_url_metadata(url):
+    endpoint = oembed_endpoint_for_url(url)
+    if endpoint:
+        try:
+            request = Request(
+                endpoint,
+                headers={
+                    "User-Agent": "Mozilla/5.0 (compatible; SideKick/1.0)",
+                    "Accept": "application/json",
+                },
+            )
+            with urlopen(request, timeout=3) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+            title = (payload.get("title") or "").strip()
+            if title:
+                return {"title": title[:255]}
+        except (ValueError, URLError, TimeoutError, json.JSONDecodeError):
+            pass
+
+    title = read_url_title(url)
+    if title:
+        return {"title": title[:255]}
+
+    fallback_title = fallback_link_title(url)
+    return {"title": fallback_title} if fallback_title else {}
 
 
 def normalized_url(value):
@@ -161,7 +311,6 @@ def serialize_item_payload(item):
         "sourceUrl": item.source_url,
         "imagePath": item.image_path,
         "title": item.title,
-        "note": item.note,
         "sourcePlatform": item.source_platform,
         "capturedUrl": item.captured_url,
         "pageTitle": item.page_title,
@@ -224,7 +373,7 @@ def save_uploaded_image(uploaded_image, current_user):
     return default_storage.url(stored_path)
 
 
-def create_item_record(*, current_user, space, item_type, content_text="", source_url="", note="", title="", uploaded_image=None):
+def create_item_record(*, current_user, space, item_type, content_text="", source_url="", title="", uploaded_image=None):
     item_type = (item_type or Item.ItemType.TEXT).lower()
     valid_item_types = {choice for choice, _ in Item.ItemType.choices}
     if item_type not in valid_item_types:
@@ -232,7 +381,6 @@ def create_item_record(*, current_user, space, item_type, content_text="", sourc
 
     content_text = (content_text or "").strip()
     source_url = normalized_url(source_url)
-    note = (note or "").strip()
     title = (title or "").strip()
     captured_url = source_url
     image_path = ""
@@ -244,9 +392,10 @@ def create_item_record(*, current_user, space, item_type, content_text="", sourc
     elif item_type == Item.ItemType.LINK:
         if not source_url or not looks_like_absolute_url(source_url):
             return None, "Link items require a valid source URL.", "missing_source_url"
-        if not title:
-            title = read_url_title(source_url)
-        page_title = title or source_url
+        if not title or title_looks_like_url(title) or title.lower() == title_from_domain(source_url).lower():
+            metadata = read_url_metadata(source_url)
+            title = metadata.get("title", "")
+        page_title = title or fallback_link_title(source_url)
     elif item_type == Item.ItemType.IMAGE:
         image_url = normalized_url(source_url)
         if uploaded_image is not None:
@@ -269,13 +418,15 @@ def create_item_record(*, current_user, space, item_type, content_text="", sourc
         source_url=source_url,
         image_path=image_path,
         title=title or page_title or source_url,
-        note=note,
+        note="",
         source_platform=Item.SourcePlatform.WEB,
         captured_url=captured_url,
         page_title=page_title,
         created_at=now,
         updated_at=now,
     )
+    space.updated_at = now
+    space.save(update_fields=["updated_at"])
     return Item.objects.select_related("space", "added_by").get(item_id=item.item_id), None, None
 
 
@@ -310,6 +461,20 @@ def can_add_items(space, current_user):
     if is_owner(space, current_user):
         return True
     return membership_role(space, current_user) == Membership.Role.COLLABORATOR
+
+
+def can_move_item_record(item, current_user, target_space):
+    if item is None or target_space is None:
+        return False
+    if is_universal_space(item.space):
+        return (
+            item.space.owner_id == current_user.user_id
+            and item.added_by_id == current_user.user_id
+            and target_space.owner_id == current_user.user_id
+        )
+    if not can_add_items(target_space, current_user):
+        return False
+    return can_delete_item_record(item, current_user)
 
 
 def can_delete_item_record(item, current_user):
@@ -401,7 +566,23 @@ def revoke_space_share_links(space):
 
 def set_flash_and_redirect(request, level, message, target):
     getattr(messages, level)(request, message)
-    return redirect(target)
+    return redirect(append_request_auth(target, request))
+
+
+def append_request_auth(target, request):
+    auth_token_value = get_current_auth_token_value(request)
+    if not auth_token_value or not isinstance(target, str) or not target.startswith("/"):
+        return target
+
+    parsed = urlparse(target)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["authToken"] = auth_token_value
+    updated_query = urlencode(query)
+    return urlunparse(parsed._replace(query=updated_query))
+
+
+def redirect_with_request_auth(request, target):
+    return redirect(append_request_auth(target, request))
 
 
 def url_with_query(request, **updates):
@@ -438,6 +619,17 @@ def decorate_items(request, items):
             }
         )
     return decorated
+
+
+def decorate_item_for_request(request, item, *, can_delete=False, can_drag=False):
+    serialized = serialize_item(item)
+    serialized["preview_url"] = url_with_query(request, preview=item.item_id)
+    serialized["external_url"] = serialized.get("captured_url") or serialized.get("source_url")
+    if can_delete:
+        serialized["delete_url"] = url_with_query(request, dialog="delete-item", item=item.item_id)
+    if can_drag:
+        serialized["can_drag"] = True
+    return serialized
 
 
 def build_item_preview(request, items):
@@ -483,10 +675,10 @@ def build_action_modal(request, *, selected_space=None, items=None):
             "type": "create-space",
             "title": "Create Space",
         }
-    if dialog == "edit-space" and selected_space:
+    if dialog == "space-settings" and selected_space:
         return {
-            "type": "edit-space",
-            "title": "Edit Space",
+            "type": "space-settings",
+            "title": "Space Settings",
             "space_name": selected_space["name"],
             "space_description": selected_space.get("description", ""),
         }
@@ -495,6 +687,15 @@ def build_action_modal(request, *, selected_space=None, items=None):
             "type": "add-item",
             "title": "Add Item",
             "space_name": selected_space["name"],
+            "space_id": selected_space["id"],
+        }
+    if dialog == "add-item" and current_user and request.GET.get("target") == "inbox":
+        inbox_space = get_or_create_universal_space(current_user)
+        return {
+            "type": "add-item",
+            "title": "Add Item",
+            "space_name": "Inbox",
+            "space_id": inbox_space.space_id,
         }
     if dialog == "invite-member" and selected_space:
         return {
@@ -561,13 +762,15 @@ def base_context(request, *, title, active_tab="home", selected_space=None):
     current_user = get_current_user(request)
     auth_next_url = url_with_query(request, mock=None)
     auth_error = request.GET.get("auth_error")
+    collaboration_requests = get_collaboration_requests(selected_space["_object"], current_user) if selected_space else []
     context = {
         "title": title,
         "active_tab": active_tab,
         "selected_space": selected_space,
         "current_user": current_user,
         "collaborators": get_space_collaborators(selected_space["_object"]) if selected_space else [],
-        "collaboration_requests": get_collaboration_requests(selected_space["_object"], current_user) if selected_space else [],
+        "collaboration_requests": collaboration_requests,
+        "pending_collaboration_requests": [request_item for request_item in collaboration_requests if request_item["is_pending"]],
         "is_modal_open": request.GET.get("modal") == "team",
         "mock_panel": mock_panel if mock_panel in {"login", "register"} else None,
         "auth_error": auth_error,
@@ -579,11 +782,14 @@ def base_context(request, *, title, active_tab="home", selected_space=None):
         "login_action_url": reverse("app:login_action"),
         "register_action_url": reverse("app:register_action"),
         "logout_action_url": reverse("app:logout_action"),
+        "connect_extension_url": reverse("app:connect_extension"),
         "next_url": auth_next_url,
         "password_rules": PASSWORD_RULES,
-        "home_url": reverse("app:home"),
-        "profile_url": reverse("app:profile"),
-        "back_url": reverse("app:home"),
+        "auth_token_value": get_current_auth_token_value(request),
+        "is_extension_mode": bool(get_current_auth_token_value(request)),
+        "home_url": append_request_auth(reverse("app:home"), request),
+        "profile_url": append_request_auth(reverse("app:profile"), request),
+        "back_url": append_request_auth(reverse("app:home"), request),
         "password_url": url_with_query(request, dialog="change-password"),
         "edit_profile_url": url_with_query(request, dialog="edit-profile"),
         "create_space_url": url_with_query(request, dialog="create-space"),
@@ -612,19 +818,47 @@ def base_context(request, *, title, active_tab="home", selected_space=None):
 def home(request):
     current_user = get_current_user(request)
     active_space_filter = request.GET.get("space_filter", "All")
+    active_item_filter = request.GET.get("item_filter", "All")
     context = base_context(request, title="SideKick")
-    space_dicts = [serialize_space(space, current_user) for space in filter_spaces(active_space_filter, current_user)]
-    recent_items = decorate_items(request, [serialize_item(item) for item in get_recent_items_for_user(current_user)])
+    space_dicts = []
+    universal_space = None
+    universal_items = []
+    if current_user:
+        universal_space = get_or_create_universal_space(current_user)
+        for space in filter_spaces(active_space_filter, current_user):
+            serialized_space = serialize_space(space, current_user)
+            serialized_space["detail_url"] = append_request_auth(
+                reverse("app:space_detail", args=[space.space_id]),
+                request,
+            )
+            serialized_space["can_accept_drop"] = space.owner_id == current_user.user_id
+            space_dicts.append(serialized_space)
+        universal_items = [
+            decorate_item_for_request(
+                request,
+                item,
+                can_delete=can_delete_item_record(item, current_user),
+                can_drag=True,
+            )
+            for item in get_space_items(universal_space)
+        ]
+    filtered_universal_items = filter_items(universal_items, active_item_filter)
     context.update(
         {
             "spaces": space_dicts,
-            "items": recent_items,
+            "items": filtered_universal_items,
             "space_filter_links": filter_links(
                 request, SPACE_FILTERS, "space_filter", active_space_filter
             ),
-            "item_preview": build_item_preview(request, recent_items),
+            "item_filter_links": filter_links(request, ITEM_FILTERS, "item_filter", active_item_filter),
+            "show_item_actions": True,
+            "home_capture_space_id": universal_space.space_id if universal_space else None,
+            "move_item_url": reverse("app:move_item"),
+            "inbox_add_item_url": url_with_query(request, dialog="add-item", target="inbox"),
+            "item_preview": build_item_preview(request, filtered_universal_items),
         }
     )
+    context["action_modal"] = build_action_modal(request, items=universal_items)
     return render(request, "app/home.html", context)
 
 
@@ -633,10 +867,8 @@ def profile(request):
     if redirect_response:
         return redirect_response
     context = base_context(request, title="Profile", active_tab="profile")
-    context["settings"] = SETTINGS
     context["profile_user"] = get_profile_user(request)
     context["profile_summary"] = get_user_profile_summary(current_user)
-    context["owned_spaces"] = accessible_spaces(current_user).filter(owner=current_user)
     return render(request, "app/profile.html", context)
 
 
@@ -647,6 +879,8 @@ def space_detail(request, space_id):
     space_obj = get_space(space_id, current_user)
     if space_obj is None:
         raise Http404("Space not found")
+    if is_universal_space(space_obj):
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     active_item_filter = request.GET.get("item_filter", "All")
     active_user_filter = request.GET.get("user_filter", "All")
@@ -659,6 +893,7 @@ def space_detail(request, space_id):
         if can_delete_item_record(item, current_user):
             serialized_item["delete_url"] = url_with_query(request, dialog="delete-item", item=item.item_id)
         serialized_item["preview_url"] = url_with_query(request, preview=item.item_id)
+        serialized_item["external_url"] = serialized_item.get("captured_url") or serialized_item.get("source_url")
         space_items.append(serialized_item)
     context = base_context(request, title=space_obj.name, selected_space=selected_space)
     context["action_modal"] = build_action_modal(request, selected_space=selected_space, items=space_items)
@@ -673,7 +908,6 @@ def space_detail(request, space_id):
             "items": filtered_items,
             "item_filter_links": filter_links(request, ITEM_FILTERS, "item_filter", active_item_filter),
             "user_filter_links": filter_links(request, user_filters, "user_filter", active_user_filter),
-            "delete_space_url": url_with_query(request, dialog="delete-space"),
             "show_item_actions": True,
             "can_add_item": can_add_items(space_obj, current_user),
             "can_manage_members": can_manage_members(space_obj, current_user),
@@ -683,9 +917,14 @@ def space_detail(request, space_id):
             ),
             "request_collaboration_url": reverse("app:request_space_collaboration", args=[space_obj.space_id]),
             "latest_collaboration_request": latest_request,
-            "team_modal_return_url": f'{reverse("app:space_detail", args=[space_obj.space_id])}?modal=team',
+            "team_modal_return_url": append_request_auth(
+                f'{reverse("app:space_detail", args=[space_obj.space_id])}?modal=team',
+                request,
+            ),
             "invite_people_url": url_with_query(request, modal="team", dialog="invite-member"),
-            "share_space_url": url_with_query(request, dialog="share-link"),
+            "share_space_url": url_with_query(request, modal="team", dialog="share-link"),
+            "space_settings_url": url_with_query(request, dialog="space-settings"),
+            "team_url": url_with_query(request, modal="team"),
             "item_preview": build_item_preview(request, filtered_items),
         }
     )
@@ -694,7 +933,7 @@ def space_detail(request, space_id):
 
 def login_action(request):
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     fallback = reverse("app:home")
     next_url = sanitize_next_url(request, fallback)
@@ -706,17 +945,17 @@ def login_action(request):
         login_url = f'{reverse("app:home")}?mock=login&auth_error=invalid_login'
         if next_url and next_url != "/":
             login_url = f"{login_url}&next={next_url}"
-        return redirect(login_url)
+        return redirect_with_request_auth(request, login_url)
 
     session_token = issue_auth_token(user)
     request.session["sidekick_user_id"] = user.user_id
     request.session["sidekick_auth_token"] = session_token.token_value
-    return redirect(next_url)
+    return redirect_with_request_auth(request, next_url)
 
 
 def register_action(request):
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     fallback = reverse("app:home")
     next_url = sanitize_next_url(request, fallback)
@@ -745,23 +984,52 @@ def register_action(request):
         session_token = issue_auth_token(user)
         request.session["sidekick_user_id"] = user.user_id
         request.session["sidekick_auth_token"] = session_token.token_value
-        return redirect(next_url)
+        return redirect_with_request_auth(request, next_url)
 
     register_url = f'{reverse("app:home")}?mock=register&auth_error={error_code}'
     if next_url and next_url != "/":
         register_url = f"{register_url}&next={next_url}"
-    return redirect(register_url)
+    return redirect_with_request_auth(request, register_url)
 
 
 def logout_action(request):
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     session_token_value = request.session.pop("sidekick_auth_token", None)
     if session_token_value:
         AuthToken.objects.filter(token_value=session_token_value).update(is_revoked=True)
+    request_token_value = get_current_auth_token_value(request)
+    if request_token_value:
+        AuthToken.objects.filter(token_value=request_token_value).update(is_revoked=True)
     request.session.pop("sidekick_user_id", None)
     return redirect(sanitize_next_url(request, reverse("app:home")))
+
+
+def connect_extension(request):
+    current_user, redirect_response = require_current_user(request)
+    if redirect_response:
+        return redirect_response
+    if request.method != "POST":
+        return redirect_with_request_auth(request, reverse("app:home"))
+
+    AuthToken.objects.filter(
+        user=current_user,
+        client_type=AuthToken.ClientType.EXTENSION,
+        is_revoked=False,
+    ).update(is_revoked=True)
+    auth_token = issue_auth_token(current_user, client_type=AuthToken.ClientType.EXTENSION)
+    payload = {
+        "status": "ok",
+        "token": auth_token.token_value,
+        "baseUrl": request.build_absolute_uri(reverse("app:home")).rstrip("/"),
+        "user": serialize_user_payload(current_user),
+    }
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return JsonResponse(payload)
+
+    messages.success(request, "Extension token refreshed.")
+    return redirect_with_request_auth(request, reverse("app:home"))
 
 
 def update_profile(request):
@@ -769,23 +1037,23 @@ def update_profile(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:profile")
+        return redirect_with_request_auth(request, reverse("app:profile"))
 
     full_name = (request.POST.get("full_name") or "").strip()
     email = (request.POST.get("email") or "").strip().lower()
     if not full_name or not email:
         messages.error(request, "Full name and email are required.")
-        return redirect(f'{reverse("app:profile")}?dialog=edit-profile')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=edit-profile')
     if User.objects.filter(email=email).exclude(user_id=current_user.user_id).exists():
         messages.error(request, "That email is already registered.")
-        return redirect(f'{reverse("app:profile")}?dialog=edit-profile')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=edit-profile')
 
     current_user.full_name = full_name
     current_user.email = email
     current_user.updated_at = timezone.now()
     current_user.save(update_fields=["full_name", "email", "updated_at"])
     messages.success(request, "Profile updated.")
-    return redirect(reverse("app:profile"))
+    return redirect_with_request_auth(request, reverse("app:profile"))
 
 
 def change_password(request):
@@ -793,7 +1061,7 @@ def change_password(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:profile")
+        return redirect_with_request_auth(request, reverse("app:profile"))
 
     current_password = request.POST.get("current_password") or ""
     new_password = request.POST.get("new_password") or ""
@@ -801,24 +1069,24 @@ def change_password(request):
 
     if not current_password or not new_password or not confirm_password:
         messages.error(request, "All password fields are required.")
-        return redirect(f'{reverse("app:profile")}?dialog=change-password')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=change-password')
     if not check_password(current_password, current_user.password_hash):
         messages.error(request, "Current password is incorrect.")
-        return redirect(f'{reverse("app:profile")}?dialog=change-password')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=change-password')
     if new_password != confirm_password:
         messages.error(request, "New password confirmation does not match.")
-        return redirect(f'{reverse("app:profile")}?dialog=change-password')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=change-password')
 
     password_error = password_validation_error(new_password)
     if password_error:
         messages.error(request, password_error)
-        return redirect(f'{reverse("app:profile")}?dialog=change-password')
+        return redirect_with_request_auth(request, f'{reverse("app:profile")}?dialog=change-password')
 
     current_user.password_hash = make_password(new_password)
     current_user.updated_at = timezone.now()
     current_user.save(update_fields=["password_hash", "updated_at"])
     messages.success(request, "Password updated.")
-    return redirect(reverse("app:profile"))
+    return redirect_with_request_auth(request, reverse("app:profile"))
 
 
 def api_register(request):
@@ -832,6 +1100,10 @@ def api_register(request):
     full_name = (payload.get("fullName") or payload.get("name") or "").strip()
     email = (payload.get("email") or "").strip().lower()
     password = payload.get("password") or ""
+    client_type = payload.get("clientType") or AuthToken.ClientType.WEB
+    valid_client_types = {choice for choice, _ in AuthToken.ClientType.choices}
+    if client_type not in valid_client_types:
+        client_type = AuthToken.ClientType.WEB
 
     if not full_name or not email or not password:
         return json_error("Full name, email, and password are required.", status=400, code="missing_fields")
@@ -850,7 +1122,7 @@ def api_register(request):
         created_at=now,
         updated_at=now,
     )
-    auth_token = issue_auth_token(user, client_type=AuthToken.ClientType.WEB)
+    auth_token = issue_auth_token(user, client_type=client_type)
     return JsonResponse(
         {
             "user": serialize_user_payload(user),
@@ -1165,7 +1437,6 @@ def api_create_item(request):
         or payload.get("imageSourceUrl")
         or payload.get("image_source_url")
         or "",
-        note=payload.get("note") or "",
         title=payload.get("title") or "",
         uploaded_image=request.FILES.get("image_file"),
     )
@@ -1198,12 +1469,12 @@ def create_space(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     name = (request.POST.get("name") or "").strip()
     description = (request.POST.get("description") or "").strip()
     if not name:
-        return redirect(f'{reverse("app:home")}?dialog=create-space')
+        return redirect_with_request_auth(request, f'{reverse("app:home")}?dialog=create-space')
 
     now = timezone.now()
     space = ResearchSpace.objects.create(
@@ -1214,7 +1485,7 @@ def create_space(request):
         created_at=now,
         updated_at=now,
     )
-    return redirect(reverse("app:space_detail", args=[space.space_id]))
+    return redirect_with_request_auth(request, reverse("app:space_detail", args=[space.space_id]))
 
 
 def update_space(request):
@@ -1222,24 +1493,24 @@ def update_space(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     space = get_space(request.POST.get("space_id"), current_user)
     if space is None or not is_owner(space, current_user):
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     name = (request.POST.get("name") or "").strip()
     description = (request.POST.get("description") or "").strip()
     if not name:
         messages.error(request, "Space name is required.")
-        return redirect(f'{reverse("app:space_detail", args=[space.space_id])}?dialog=edit-space')
+        return redirect_with_request_auth(request, f'{reverse("app:space_detail", args=[space.space_id])}?dialog=space-settings')
 
     space.name = name
     space.description = description
     space.updated_at = timezone.now()
     space.save(update_fields=["name", "description", "updated_at"])
     messages.success(request, "Space updated.")
-    return redirect(reverse("app:space_detail", args=[space.space_id]))
+    return redirect_with_request_auth(request, reverse("app:space_detail", args=[space.space_id]))
 
 
 def create_item(request):
@@ -1247,7 +1518,7 @@ def create_item(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
     is_ajax_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
 
     space_id = request.POST.get("space_id")
@@ -1255,24 +1526,22 @@ def create_item(request):
     if space is None or not can_add_items(space, current_user):
         if is_ajax_request:
             return json_error("You do not have permission to add items here.", status=403, code="forbidden")
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     item_type = request.POST.get("item_type") or Item.ItemType.TEXT
     link_title = (request.POST.get("link_title") or "").strip()
     image_title = (request.POST.get("image_title") or "").strip()
-    note = (request.POST.get("note") or "").strip()
     content_text = (request.POST.get("content_text") or "").strip()
     source_url = (request.POST.get("source_url") or "").strip()
     image_source_url = (request.POST.get("image_source_url") or "").strip()
     title = link_title if item_type == Item.ItemType.LINK else image_title
 
-    _item, error_message, _error_code = create_item_record(
+    item, error_message, _error_code = create_item_record(
         current_user=current_user,
         space=space,
         item_type=item_type,
         content_text=content_text,
         source_url=image_source_url if item_type == Item.ItemType.IMAGE else source_url,
-        note=note,
         title=title,
         uploaded_image=request.FILES.get("image_file"),
     )
@@ -1280,12 +1549,17 @@ def create_item(request):
         if is_ajax_request:
             return json_error(error_message, status=400, code="invalid_item")
         messages.error(request, error_message)
-        return redirect(f'{reverse("app:space_detail", args=[space.space_id])}?dialog=add-item')
+        fallback_url = reverse("app:home") if is_universal_space(space) else reverse("app:space_detail", args=[space.space_id])
+        if is_universal_space(space):
+            return redirect_with_request_auth(request, fallback_url)
+        return redirect_with_request_auth(request, f'{fallback_url}?dialog=add-item')
 
     if is_ajax_request:
-        return JsonResponse({"status": "ok"}, status=201)
+        return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=201)
     messages.success(request, "Item saved.")
-    return redirect(reverse("app:space_detail", args=[space.space_id]))
+    if is_universal_space(space):
+        return redirect_with_request_auth(request, reverse("app:home"))
+    return redirect_with_request_auth(request, reverse("app:space_detail", args=[space.space_id]))
 
 
 def delete_item(request):
@@ -1293,7 +1567,7 @@ def delete_item(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     item_id = request.POST.get("item_id")
     item = (
@@ -1302,13 +1576,47 @@ def delete_item(request):
         .first()
     )
     if item is None:
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
     if not can_delete_item_record(item, current_user):
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
-    space_id = item.space.space_id
+    source_space = item.space
     item.delete()
-    return redirect(reverse("app:space_detail", args=[space_id]))
+    if is_universal_space(source_space):
+        return redirect_with_request_auth(request, reverse("app:home"))
+    return redirect_with_request_auth(request, reverse("app:space_detail", args=[source_space.space_id]))
+
+
+def move_item(request):
+    current_user, redirect_response = require_current_user(request)
+    if redirect_response:
+        return redirect_response
+    if request.method != "POST":
+        return redirect_with_request_auth(request, reverse("app:home"))
+
+    is_ajax_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+    item = Item.objects.select_related("space", "added_by").filter(item_id=request.POST.get("item_id")).first()
+    target_space = get_space(request.POST.get("target_space_id"), current_user)
+    if item is None or target_space is None or not can_move_item_record(item, current_user, target_space):
+        if is_ajax_request:
+            return json_error("You do not have permission to move this item there.", status=403, code="forbidden")
+        return redirect_with_request_auth(request, reverse("app:home"))
+
+    if item.space_id == target_space.space_id:
+        if is_ajax_request:
+            return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=200)
+        return redirect_with_request_auth(request, reverse("app:home"))
+
+    now = timezone.now()
+    item.space = target_space
+    item.updated_at = now
+    item.save(update_fields=["space", "updated_at"])
+    target_space.updated_at = now
+    target_space.save(update_fields=["updated_at"])
+
+    if is_ajax_request:
+        return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=200)
+    return redirect_with_request_auth(request, reverse("app:home"))
 
 
 def invite_member(request):
@@ -1509,8 +1817,9 @@ def create_share_link(request):
         )
 
     share_url = request.build_absolute_uri(reverse("app:share_link_access", args=[share_link.token]))
-    return redirect(
-        f"{reverse('app:space_detail', args=[space.space_id])}?{urlencode({'dialog': 'share-link', 'share_url': share_url})}"
+    return redirect_with_request_auth(
+        request,
+        f"{reverse('app:space_detail', args=[space.space_id])}?{urlencode({'modal': 'team', 'dialog': 'share-link', 'share_url': share_url})}",
     )
 
 
@@ -1554,11 +1863,11 @@ def share_link_access(request, token):
     current_user = get_current_user(request)
     if current_user is None:
         login_url = f"{reverse('app:home')}?mock=login&next={reverse('app:share_link_access', args=[token])}"
-        return redirect(login_url)
+        return redirect_with_request_auth(request, login_url)
 
     space = get_space(share_link.space.space_id, current_user)
     if space is not None:
-        return redirect(reverse("app:space_detail", args=[share_link.space.space_id]))
+        return redirect_with_request_auth(request, reverse("app:space_detail", args=[share_link.space.space_id]))
 
     existing_request = (
         CollaborationRequest.objects.filter(
@@ -1591,7 +1900,7 @@ def join_shared_space(request, token):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     share_link = ShareLink.objects.select_related("space").filter(token=token, is_active=True).first()
     if share_link is None:
@@ -1646,7 +1955,7 @@ def request_shared_space_access(request, token):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     share_link = ShareLink.objects.select_related("space").filter(token=token, is_active=True).first()
     if share_link is None:
@@ -1654,7 +1963,7 @@ def request_shared_space_access(request, token):
 
     if share_link.space.owner_id == current_user.user_id or get_membership(share_link.space, current_user):
         messages.info(request, "You already have access to this space.")
-        return redirect(reverse("app:share_link_access", args=[token]))
+        return redirect_with_request_auth(request, reverse("app:share_link_access", args=[token]))
 
     _, level, message = create_collaboration_request(
         space=share_link.space,
@@ -1663,7 +1972,7 @@ def request_shared_space_access(request, token):
     )
     getattr(messages, level)(request, message)
 
-    return redirect(reverse("app:share_link_access", args=[token]))
+    return redirect_with_request_auth(request, reverse("app:share_link_access", args=[token]))
 
 
 def request_space_collaboration(request, space_id):
@@ -1671,7 +1980,7 @@ def request_space_collaboration(request, space_id):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     space = get_space(space_id, current_user)
     if space is None:
@@ -1712,11 +2021,11 @@ def delete_space(request):
     if redirect_response:
         return redirect_response
     if request.method != "POST":
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     space = get_space(request.POST.get("space_id"), current_user)
     if space is None or not is_owner(space, current_user):
-        return redirect("app:home")
+        return redirect_with_request_auth(request, reverse("app:home"))
 
     space.delete()
-    return redirect(reverse("app:home"))
+    return redirect_with_request_auth(request, reverse("app:home"))

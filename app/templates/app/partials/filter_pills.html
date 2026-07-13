@@ -1,9 +1,9 @@
 <!-- Author Petar Jovanovic -->
-<div class="filter-row {% if row_class %}{{ row_class }}{% endif %}">
-  {% if title %}
-    <span class="filter-label">{{ title }}</span>
+<div class="filter-row {% if row_class %}{{ row_class }}{% endif %}" {% if filter_key %}data-filter-key="{{ filter_key }}"{% endif %}>
+  {% if filter_title %}
+    <span class="filter-label">{{ filter_title }}</span>
   {% endif %}
   {% for filter in filters %}
-    <a class="pill {% if filter.is_active %}active{% endif %}" href="{{ filter.url }}">{{ filter.label }}</a>
+    <button class="pill {% if filter.is_active %}active{% endif %}" type="button" data-filter-value="{{ filter.label }}">{{ filter.label }}</button>
   {% endfor %}
 </div>

@@ -2,83 +2,49 @@
 {% extends "app/base.html" %}
 
 {% block content %}
-  <section class="section animate-in">
-    <div class="profile-card">
+  <section class="section animate-in profile-shell">
+    <div class="profile-card profile-card--stacked">
       <img class="profile-image" src="{{ profile_user.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
       <div class="profile-copy">
+        <p class="profile-eyebrow">Account</p>
         <h3>{{ profile_user.full_name }}</h3>
         <p>{{ profile_user.email }}</p>
         <div class="profile-stats">
-          <span class="status-pill">{{ profile_summary.owned_spaces }} owned spaces</span>
-          <span class="status-pill">{{ profile_summary.shared_spaces }} shared spaces</span>
-          <span class="status-pill">{{ profile_summary.saved_items }} saved items</span>
-        </div>
-        <div class="space-actions">
-          <a class="button neutral-button" href="{{ edit_profile_url }}">Edit Profile</a>
-          <a class="button neutral-button" href="{{ password_url }}">Change Password</a>
+          <span class="status-pill">{{ profile_summary.owned_spaces }} owned</span>
+          <span class="status-pill">{{ profile_summary.shared_spaces }} shared</span>
+          <span class="status-pill">{{ profile_summary.saved_items }} items</span>
         </div>
       </div>
     </div>
 
-    <div class="settings-list">
-      <h3 class="section-title">Your Spaces</h3>
-      {% if owned_spaces %}
-        <div class="space-grid">
-          {% for space in owned_spaces %}
-            <a class="space-card" href="{% url 'app:space_detail' space.space_id %}">
-              <span class="space-thumb">
-                <img src="{{ space.image_url }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
-              </span>
-              <span class="space-copy">
-                <span class="space-name">{{ space.name }}</span>
-                <span class="muted">Owner</span>
-              </span>
-            </a>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state compact">
-          <h3>No spaces yet</h3>
-          <p class="launchpad-copy">Create a space from the home screen to start building your own content.</p>
-        </div>
-      {% endif %}
-    </div>
+    <div class="profile-panel">
+      <div class="profile-panel__header">
+        <h3>Profile Settings</h3>
+        <p class="launchpad-copy">Keep your account details current and secure.</p>
+      </div>
 
-    <div class="settings-list">
-      <h3 class="section-title">Your Recent Contributions</h3>
-      {% if profile_summary.recent_items %}
-        <div class="activity-list">
-          {% for item in profile_summary.recent_items %}
-            <div class="setting-row">
-              <span>
-                {% if item.item_type == "text" %}
-                  Text note in {{ item.space.name }}
-                {% elif item.item_type == "link" %}
-                  {{ item.title|default:"Saved link" }} in {{ item.space.name }}
-                {% else %}
-                  Image in {{ item.space.name }}
-                {% endif %}
-              </span>
-              <span class="muted">{{ item.created_at|date:"d.m.Y H:i" }}</span>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <div class="empty-state compact">
-          <h3>No activity yet</h3>
-          <p class="launchpad-copy">Your notes, links, and uploaded images will appear here after you start saving them.</p>
-        </div>
-      {% endif %}
-    </div>
-
-    <div class="settings-list">
-      <h3 class="section-title">Account Settings</h3>
-      {% for setting in settings %}
-        <button class="setting-row">
-          <span>{{ setting }}</span>
-          <span class="chevron">›</span>
-        </button>
-      {% endfor %}
+      <div class="profile-actions">
+        {% if not is_extension_mode %}
+          <form method="post" action="{{ connect_extension_url }}" class="extension-connect-form" data-connect-extension-form>
+            {% csrf_token %}
+            <button class="button neutral-button profile-action-button" type="submit" data-connect-extension-button>
+              Connect extension
+            </button>
+          </form>
+        {% endif %}
+        <a class="button neutral-button profile-action-button" href="{{ edit_profile_url }}">Edit Profile</a>
+        <a class="button neutral-button profile-action-button" href="{{ password_url }}">Change Password</a>
+        <form
+          method="post"
+          action="{{ logout_action_url }}"
+          class="profile-logout-form"
+          {% if is_extension_mode %}target="_blank" rel="noopener noreferrer" data-extension-logout-form{% endif %}
+        >
+          {% csrf_token %}
+          <input type="hidden" name="next_url" value="{{ next_url }}">
+          <button class="button destructive-outline-button profile-action-button" type="submit">Log Out</button>
+        </form>
+      </div>
     </div>
   </section>
 {% endblock %}

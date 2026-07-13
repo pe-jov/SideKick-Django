@@ -1,5 +1,5 @@
 <!-- Author Petar Jovanovic -->
-<div class="modal-backdrop" data-modal-backdrop>
+<div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_mock_url }}" data-overlay-kind="mock-panel">
   <div class="modal-card mock-panel-card">
     <div class="modal-header">
       <h2>{% if mock_panel == "register" %}Register{% else %}Login{% endif %}</h2>
@@ -9,17 +9,17 @@
     </div>
 
     <form
-      class="form-stack mock-login-form"
+      class="form-stack mock-login-form auth-modal-form"
       method="post"
       action="{% if mock_panel == 'register' %}{{ register_action_url }}{% else %}{{ login_action_url }}{% endif %}"
     >
       {% csrf_token %}
       <input type="hidden" name="next_url" value="{{ next_url }}">
-      <p class="mock-panel-copy">
+      <p class="mock-panel-copy auth-modal-copy">
         {% if mock_panel == "register" %}
-          Kreirajte nalog za pravi ulazak u aplikaciju.
+          Create your SideKick account.
         {% else %}
-          Prijavite se postojecim nalogom.
+          Sign in to continue.
         {% endif %}
       </p>
       {% if auth_error %}
@@ -42,7 +42,7 @@
       {% if mock_panel == "register" %}
         <label>
           <span class="sr-only">Full name</span>
-          <input class="form-input" type="text" name="name" value="Demo User" required>
+          <input class="form-input" type="text" name="name" placeholder="Full name" required>
         </label>
       {% endif %}
       <label>
@@ -51,38 +51,34 @@
           class="form-input"
           type="email"
           name="email"
-          value="{% if mock_panel == 'register' %}newuser@sidekick.app{% else %}petar@example.com{% endif %}"
+          placeholder="Email"
           required
         >
       </label>
       <label>
         <span class="sr-only">Password</span>
-        <input class="form-input" type="password" name="password" value="Sidekick123!" required>
+        <input class="form-input" type="password" name="password" placeholder="Password" required>
       </label>
       {% if mock_panel == "register" %}
-        <ul class="rule-list">
+        <ul class="rule-list auth-modal-rules">
           {% for rule in password_rules %}
             <li>{{ rule }}</li>
           {% endfor %}
         </ul>
         <label>
           <span class="sr-only">Confirm password</span>
-          <input class="form-input" type="password" name="confirm_password" value="Sidekick123!" required>
+          <input class="form-input" type="password" name="confirm_password" placeholder="Confirm password" required>
         </label>
       {% endif %}
-      <div class="mock-panel-switch">
-        {% if mock_panel == "register" %}
-          <span class="muted">Already have an account?</span>
-          <a class="mock-panel-link" href="{{ login_url }}">Login</a>
-        {% else %}
-          <span class="muted">Need an account?</span>
-          <a class="mock-panel-link" href="{{ register_url }}">Register</a>
-        {% endif %}
-      </div>
-      <div class="modal-actions">
-        <button class="invite-button" type="submit">
+      <div class="auth-modal-actions">
+        <button class="button auth-modal-button auth-modal-button--primary" type="submit">
           {% if mock_panel == "register" %}Register{% else %}Login{% endif %}
         </button>
+        {% if mock_panel == "register" %}
+          <a class="button auth-modal-button auth-modal-button--secondary" href="{{ login_url }}">Login</a>
+        {% else %}
+          <a class="button auth-modal-button auth-modal-button--secondary" href="{{ register_url }}">Register</a>
+        {% endif %}
       </div>
     </form>
   </div>

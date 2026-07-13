@@ -1,19 +1,29 @@
 <!-- Author Petar Jovanovic -->
 {% load static %}
 <!doctype html>
-<html lang="en">
+<html
+  lang="en"
+  data-auth-token="{{ auth_token_value|default:'' }}"
+  data-authenticated="{% if current_user %}true{% else %}false{% endif %}"
+  data-extension-mode="{% if is_extension_mode %}true{% else %}false{% endif %}"
+>
   <head>
+    {% now "U" as static_version %}
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ title }} | SideKick</title>
-    <link rel="stylesheet" href="{% static 'app/css/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'app/css/styles.css' %}?v={{ static_version }}">
     <script>
       if (localStorage.getItem("sidekick-theme") === "dark") {
         document.documentElement.classList.add("dark");
       }
     </script>
   </head>
-  <body>
+  <body
+    data-auth-token="{{ auth_token_value|default:'' }}"
+    data-authenticated="{% if current_user %}true{% else %}false{% endif %}"
+    data-extension-mode="{% if is_extension_mode %}true{% else %}false{% endif %}"
+  >
     <div class="app-shell">
       {% include "app/partials/header.html" %}
       <main class="main-content">
@@ -44,9 +54,9 @@
     </div>
     <div class="item-context-menu" data-item-context-menu hidden>
       <a class="item-context-menu__action" data-item-context-action href="#">
-        Delete item
+        Action
       </a>
     </div>
-    <script src="{% static 'app/js/app.js' %}"></script>
+    <script src="{% static 'app/js/app.js' %}?v={{ static_version }}"></script>
   </body>
 </html>

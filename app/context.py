@@ -3,12 +3,13 @@ from urllib.parse import urlparse
 
 from django.utils import timezone
 
-from .models import CollaborationRequest, Item, Membership, ResearchSpace, ShareLink, User
+from .models import AuthToken, CollaborationRequest, Item, Membership, ResearchSpace, ShareLink, User
 
 
 SETTINGS = ["Notifications", "Privacy & Security", "Appearance", "Help & Support"]
 SPACE_FILTERS = ["All", "Owned", "Shared"]
 ITEM_FILTERS = ["All", "Images", "Links", "Text"]
+UNIVERSAL_SPACE_PREFIX = "[[SIDEKICK_UNIVERSAL]]"
 PASSWORD_RULES = [
     "Najmanje 8 karaktera",
     "Najmanje jedno malo slovo",
@@ -25,16 +26,114 @@ def get_demo_user():
     return User.objects.order_by("user_id").first()
 
 
-def get_current_user(request):
-    user_id = request.session.get("sidekick_user_id")
-    if not user_id:
+def get_request_auth_token_value(request):
+    cached = getattr(request, "_sidekick_extension_auth_token", None)
+    if cached:
+        return cached
+
+    token_value = (
+        request.GET.get("authToken")
+        or request.POST.get("authToken")
+        or request.GET.get("auth_token")
+        or request.POST.get("auth_token")
+    )
+    if token_value:
+        return token_value
+
+    header = request.headers.get("Authorization", "").strip()
+    if not header:
+        return ""
+    parts = header.split()
+    if len(parts) != 2 or parts[0].lower() not in {"token", "bearer"}:
+        return ""
+    return parts[1]
+
+
+def get_request_auth_token(request):
+    cached = getattr(request, "_sidekick_extension_auth_token_object", None)
+    if cached is not None:
+        return cached
+
+    token_value = get_request_auth_token_value(request)
+    if not token_value:
+        request._sidekick_extension_auth_token_object = None
         return None
-    return User.objects.filter(user_id=user_id).first()
+
+    auth_token = (
+        AuthToken.objects.select_related("user")
+        .filter(token_value=token_value, is_revoked=False)
+        .first()
+    )
+    if auth_token is None:
+        request._sidekick_extension_auth_token_object = None
+        return None
+    if auth_token.expires_at and auth_token.expires_at <= timezone.now():
+        request._sidekick_extension_auth_token_object = None
+        return None
+
+    request._sidekick_extension_auth_token = token_value
+    request._sidekick_extension_auth_token_object = auth_token
+    return auth_token
+
+
+def get_current_auth_token_value(request):
+    auth_token = get_request_auth_token(request)
+    if auth_token is None:
+        return ""
+    return auth_token.token_value
+
+
+def get_current_user(request):
+    cached_user = getattr(request, "_sidekick_current_user", None)
+    if cached_user is not None:
+        return cached_user
+
+    user_id = request.session.get("sidekick_user_id")
+    if user_id:
+        user = User.objects.filter(user_id=user_id).first()
+        if user is not None:
+            request._sidekick_current_user = user
+            return user
+
+    auth_token = get_request_auth_token(request)
+    if auth_token is None:
+        request._sidekick_current_user = None
+        return None
+
+    request._sidekick_current_user = auth_token.user
+    return auth_token.user
 
 
 def share_link_is_available(share_link):
     return share_link is not None and share_link.is_active and (
         share_link.expires_at is None or share_link.expires_at > timezone.now()
+    ) 
+
+
+def universal_space_marker(user):
+    return f"{UNIVERSAL_SPACE_PREFIX}:{user.user_id}"
+
+
+def is_universal_space(space):
+    if space is None:
+        return False
+    return (space.description or "").startswith(UNIVERSAL_SPACE_PREFIX)
+
+
+def get_or_create_universal_space(user):
+    marker = universal_space_marker(user)
+    space = ResearchSpace.objects.filter(owner=user, description=marker).first()
+    if space is not None:
+        return space
+
+    now = timezone.now()
+    return ResearchSpace.objects.create(
+        owner=user,
+        name="Inbox",
+        description=marker,
+        is_archived=False,
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -50,17 +149,22 @@ def filter_spaces(active_filter, current_user):
     spaces = ResearchSpace.objects.select_related("owner").prefetch_related("memberships__user", "memberships__joined_via")
     if current_user is None:
         return []
+    visible_spaces = sorted(
+        [space for space in spaces if not is_universal_space(space)],
+        key=lambda space: (space.updated_at, space.space_id),
+        reverse=True,
+    )
 
     if active_filter == "Owned":
-        return list(spaces.filter(owner=current_user))
+        return [space for space in visible_spaces if space.owner_id == current_user.user_id]
     if active_filter == "Shared":
         return [
-            space for space in spaces
+            space for space in visible_spaces
             if space.owner_id != current_user.user_id and current_space_role(space, current_user) in {"Collaborator", "Viewer"}
         ]
 
     return [
-        space for space in spaces
+        space for space in visible_spaces
         if space.owner_id == current_user.user_id or current_space_role(space, current_user) in {"Collaborator", "Viewer"}
     ]
 
@@ -90,7 +194,6 @@ def serialize_space(space, current_user):
         "name": space.name,
         "description": space.description,
         "role": current_space_role(space, current_user),
-        "image": space.image_url,
         "is_archived": space.is_archived,
     }
 
@@ -127,7 +230,6 @@ def serialize_item(item):
         "domain": domain if item.item_type == Item.ItemType.LINK else None,
         "space": item.space.name,
         "added_by": item.added_by.full_name,
-        "note": item.note,
         "source_url": item.source_url,
         "captured_url": item.captured_url,
         "page_title": item.page_title,
@@ -148,7 +250,8 @@ def accessible_spaces(current_user):
     allowed_ids = [
         space.space_id
         for space in all_spaces
-        if space.owner_id == current_user.user_id or current_space_role(space, current_user) in {"Collaborator", "Viewer"}
+        if not is_universal_space(space)
+        and (space.owner_id == current_user.user_id or current_space_role(space, current_user) in {"Collaborator", "Viewer"})
     ]
     return ResearchSpace.objects.filter(space_id__in=allowed_ids)
 
@@ -271,7 +374,7 @@ def get_user_profile_summary(current_user):
             "recent_items": [],
         }
 
-    owned_spaces = ResearchSpace.objects.filter(owner=current_user).count()
+    owned_spaces = ResearchSpace.objects.filter(owner=current_user).exclude(description__startswith=UNIVERSAL_SPACE_PREFIX).count()
     shared_memberships = Membership.objects.select_related("joined_via").filter(
         user=current_user,
         status=Membership.Status.ACTIVE,

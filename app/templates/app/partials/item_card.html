@@ -2,33 +2,42 @@
 <article
   class="item-card"
   data-type="{{ item.type }}"
-  data-preview-url="{{ item.preview_url }}"
+  {% if item.preview_url %}data-preview-url="{{ item.preview_url }}"{% endif %}
+  {% if item.external_url %}data-external-url="{{ item.external_url }}"{% endif %}
+  {% if item.id %}data-item-id="{{ item.id }}"{% endif %}
+  {% if item.src %}data-src="{{ item.src }}"{% endif %}
+  {% if item.content %}data-content="{{ item.content|escape }}"{% endif %}
+  {% if item.title %}data-title="{{ item.title|escape }}"{% endif %}
+  {% if item.domain %}data-domain="{{ item.domain|escape }}"{% endif %}
+  {% if item.page_title %}data-page-title="{{ item.page_title|escape }}"{% endif %}
+  {% if item.added_by %}data-added-by="{{ item.added_by|escape }}"{% endif %}
   {% if show_item_actions %}data-delete-url="{{ item.delete_url }}"{% endif %}
+  {% if item.can_drag %}data-can-drag="true"{% endif %}
   tabindex="0"
 >
   {% if item.type == "image" %}
-    <img class="item-image" src="{{ item.src }}" alt="Saved item" referrerpolicy="no-referrer">
-    <div class="item-card-footer">
-      <p class="item-space">{{ item.space }}</p>
-      <p class="muted item-meta">Added by {{ item.added_by }}</p>
-    </div>
+    <img class="item-image" src="{{ item.src }}" alt="Saved item" referrerpolicy="no-referrer" draggable="false">
   {% elif item.type == "text" %}
-    <div class="item-content square-card">
-      <span class="small-icon">{% include "app/partials/icons/file_text.svg" %}</span>
-      <div>
-        <p class="item-text">"{{ item.content }}"</p>
-        <p class="item-space">{{ item.space }}</p>
-        <p class="muted item-meta">Added by {{ item.added_by }}</p>
-      </div>
+    <div class="item-content square-card item-content--text" draggable="false">
+      <p class="item-text">{{ item.content }}</p>
     </div>
   {% elif item.type == "link" %}
-    <div class="item-content square-card">
-      <span class="small-icon">{% include "app/partials/icons/link.svg" %}</span>
-      <div>
+    <div class="item-content square-card item-content--link" draggable="false">
+      <div class="item-link-topline">
+        {% if item.external_url %}
+          <img
+            class="item-link-favicon"
+            src="https://www.google.com/s2/favicons?sz=128&domain_url={{ item.external_url|urlencode }}"
+            alt=""
+            referrerpolicy="no-referrer"
+          >
+        {% else %}
+          <span class="small-icon">{% include "app/partials/icons/link.svg" %}</span>
+        {% endif %}
+      </div>
+      <div class="item-link-copy">
         <h3 class="item-title">{{ item.title }}</h3>
         <p class="muted item-domain">{{ item.domain }}</p>
-        <p class="item-space">{{ item.space }}</p>
-        <p class="muted item-meta">Added by {{ item.added_by }}</p>
       </div>
     </div>
   {% endif %}

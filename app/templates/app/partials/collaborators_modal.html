@@ -1,5 +1,5 @@
 <!-- Author Petar Jovanovic -->
-<div class="modal-backdrop" data-modal-backdrop>
+<div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_modal_url }}" data-overlay-kind="team-modal">
   <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="collaborators-title">
     <div class="modal-header">
       <div>
@@ -13,90 +13,40 @@
       </a>
     </div>
 
-    {% if can_manage_members or can_request_collaboration or latest_collaboration_request %}
+    {% if can_manage_members and pending_collaboration_requests %}
       <div class="request-status-panel">
-        <div class="modal-section-heading">
-          <h3>Access</h3>
-          {% if can_request_collaboration %}
-            <span class="status-pill">Viewer</span>
-          {% endif %}
-        </div>
-
-        {% if can_request_collaboration %}
+        {% for request in pending_collaboration_requests %}
           <article class="request-status-card request-status-card--action">
-            <div class="request-status-copy">
-              <p class="collaborator-name">Collaborator access</p>
-              {% if latest_collaboration_request %}
-                <span class="status-pill {{ latest_collaboration_request.status_class }}">{{ latest_collaboration_request.status }}</span>
-                <p class="muted">{{ latest_collaboration_request.note }}</p>
-              {% else %}
-                <p class="muted">Request editing and upload access for this space.</p>
-              {% endif %}
+            <div>
+              <p class="collaborator-name">{{ request.name }}</p>
+              <p class="muted">{{ request.note }}</p>
             </div>
-            {% if latest_collaboration_request and latest_collaboration_request.status == "Pending" %}
-              <span class="button neutral-button disabled-button" aria-disabled="true">Request sent</span>
-            {% elif latest_collaboration_request and latest_collaboration_request.status == "Rejected" %}
-              <span class="button neutral-button disabled-button" aria-disabled="true">Request closed</span>
-            {% elif latest_collaboration_request and latest_collaboration_request.status == "Approved" %}
-              <span class="button neutral-button disabled-button" aria-disabled="true">Already approved</span>
-            {% else %}
-              <form method="post" action="{{ request_collaboration_url }}">
-                {% csrf_token %}
-                <input type="hidden" name="next_url" value="{{ team_modal_return_url }}">
-                <button class="button invite-button" type="submit">Request access</button>
-              </form>
-            {% endif %}
+            <div class="space-actions">
+              <a class="button neutral-button" href="?modal=team&dialog=review-request&request_id={{ request.id }}&decision=approve">Accept</a>
+              <a class="button neutral-button" href="?modal=team&dialog=review-request&request_id={{ request.id }}&decision=reject">Decline</a>
+            </div>
           </article>
-        {% endif %}
-
-        {% if can_manage_members %}
-          <div class="modal-section-heading">
-            <h3>Requests</h3>
-          </div>
-          {% for request in collaboration_requests %}
-            <article class="request-status-card">
-              <div>
-                <p class="collaborator-name">{{ request.name }}</p>
-                <p class="muted">{{ request.space }}</p>
-              </div>
-              <div class="request-status-copy">
-                <span class="status-pill {{ request.status_class }}">{{ request.status }}</span>
-                <p class="muted">{{ request.note }}</p>
-                {% if can_manage_members and request.is_pending %}
-                  <div class="space-actions">
-                    <a class="button neutral-button" href="?modal=team&dialog=review-request&request_id={{ request.id }}&decision=approve">Approve</a>
-                    <a class="button neutral-button" href="?modal=team&dialog=review-request&request_id={{ request.id }}&decision=reject">Reject</a>
-                  </div>
-                {% endif %}
-              </div>
-            </article>
-          {% empty %}
-            <article class="request-status-card">
-              <p class="muted">No collaboration requests right now.</p>
-            </article>
-          {% endfor %}
-        {% endif %}
+        {% endfor %}
       </div>
     {% endif %}
 
     <div class="collaborator-list">
-      <div class="modal-section-heading">
-        <h3>People</h3>
-      </div>
       {% for user in collaborators %}
-        <article class="collaborator-row">
+        <article
+          class="collaborator-row"
+          {% if user.role != "Owner" and selected_space and selected_space.role == "Owner" and user.member_id %}
+            data-member-remove-url="?modal=team&dialog=remove-member&member_id={{ user.member_id }}&member_name={{ user.name|urlencode }}"
+          {% endif %}
+        >
           <div class="collaborator-person">
             <img src="{{ user.avatar }}" alt="{{ user.name }}" referrerpolicy="no-referrer">
-            <div>
+            <div class="request-status-copy">
               <p class="collaborator-name">{{ user.name }}</p>
               <p class="muted collaborator-email">{{ user.email }}</p>
             </div>
           </div>
           <div class="collaborator-actions">
             <span class="role-badge {{ user.badge_class }}">{{ user.role }}</span>
-            {% if user.role != "Owner" and selected_space and selected_space.role == "Owner" and user.member_id %}
-              <a class="plain-button item-action-link" href="?modal=team&dialog=remove-member&member_id={{ user.member_id }}&member_name={{ user.name|urlencode }}">Remove</a>
-            {% endif %}
           </div>
         </article>
       {% endfor %}
@@ -105,6 +55,21 @@
     <div class="modal-footer">
       {% if can_manage_members %}
         <a class="invite-button button" href="{{ invite_people_url }}">Invite People</a>
+        <a class="button neutral-button modal-footer-button" href="{{ share_space_url }}">Share Link</a>
+      {% elif can_request_collaboration %}
+        {% if latest_collaboration_request and latest_collaboration_request.status == "Pending" %}
+          <span class="invite-button button disabled-button" aria-disabled="true">Request sent</span>
+        {% elif latest_collaboration_request and latest_collaboration_request.status == "Rejected" %}
+          <span class="invite-button button disabled-button" aria-disabled="true">Request closed</span>
+        {% elif latest_collaboration_request and latest_collaboration_request.status == "Approved" %}
+          <span class="invite-button button disabled-button" aria-disabled="true">Already approved</span>
+        {% else %}
+          <form method="post" action="{{ request_collaboration_url }}">
+            {% csrf_token %}
+            <input type="hidden" name="next_url" value="{{ team_modal_return_url }}">
+            <button class="invite-button" type="submit">Request collaborator access</button>
+          </form>
+        {% endif %}
       {% endif %}
     </div>
   </section>

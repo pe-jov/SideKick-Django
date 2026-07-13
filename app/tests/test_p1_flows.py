@@ -5,6 +5,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
 
+from app.context import get_or_create_universal_space
 from app.models import AuthToken, CollaborationRequest, Item, Membership, ResearchSpace, ShareLink, User
 
 
@@ -289,6 +290,18 @@ class P1FlowTests(TestCase):
         returned_names = {space["name"] for space in response.json()["spaces"]}
         self.assertNotIn("P1 Space", returned_names)
 
+    def test_universal_space_is_hidden_from_space_listing(self):
+        get_or_create_universal_space(self.owner)
+
+        response = self.client.get(
+            reverse("app:api_spaces"),
+            **self.auth_header(self.owner_token.token_value),
+        )
+
+        self.assertEqual(response.status_code, 200)
+        returned_names = {space["name"] for space in response.json()["spaces"]}
+        self.assertNotIn("Inbox", returned_names)
+
     def test_collaborator_can_add_items_but_cannot_manage_space_settings(self):
         Membership.objects.create(
             space=self.space,
@@ -357,3 +370,32 @@ class P1FlowTests(TestCase):
 
         self.assertEqual(detail_response.status_code, 200)
         self.assertEqual(create_item.status_code, 403)
+
+    def test_owner_can_move_item_from_universal_space_into_regular_space(self):
+        universal_space = get_or_create_universal_space(self.owner)
+        item = Item.objects.create(
+            space=universal_space,
+            added_by=self.owner,
+            item_type=Item.ItemType.TEXT,
+            content_text="Sort later",
+            source_url="",
+            image_path="",
+            title="",
+            note="",
+            source_platform=Item.SourcePlatform.WEB,
+            captured_url="",
+            page_title="",
+            created_at=timezone.now(),
+            updated_at=timezone.now(),
+        )
+        self.login_session(self.owner)
+
+        response = self.client.post(
+            reverse("app:move_item"),
+            data={"item_id": item.item_id, "target_space_id": self.space.space_id},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        item.refresh_from_db()
+        self.assertEqual(item.space_id, self.space.space_id)

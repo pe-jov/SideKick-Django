@@ -1,8 +1,11 @@
 <!-- Author Petar Jovanovic -->
-<a class="space-card" href="{% url 'app:space_detail' space.id %}">
-  <span class="space-thumb">
-    <img src="{{ space.image }}" alt="{{ space.name }}" referrerpolicy="no-referrer">
-  </span>
+<a
+  class="space-card {% if space.can_accept_drop %}space-card--drop-target{% else %}space-card--drop-disabled{% endif %}"
+  href="{{ space.detail_url }}"
+  data-space-role="{{ space.role|lower }}"
+  {% if space.can_accept_drop %}data-drop-space-id="{{ space.id }}"{% endif %}
+  {% if not space.can_accept_drop %}data-drop-disabled="true"{% endif %}
+>
   <span class="space-copy">
     <span class="space-name">{{ space.name }}</span>
     <span class="muted">{{ space.role }}</span>
