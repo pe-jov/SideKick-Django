@@ -14,8 +14,22 @@ const normalizeBaseUrl = (value) => {
   return trimmed || DEFAULT_BASE_URL;
 };
 
+const normalizeAppPath = (value) => {
+  const raw = String(value || "").trim();
+  if (!raw) return "/";
+
+  try {
+    const url = new URL(raw, `${normalizeBaseUrl(sessionState?.baseUrl || baseUrlInput?.value || DEFAULT_BASE_URL)}/`);
+    ["modal", "dialog", "preview", "mock", "authToken"].forEach((key) => url.searchParams.delete(key));
+    const query = url.searchParams.toString();
+    return `${url.pathname}${query ? `?${query}` : ""}`;
+  } catch {
+    return raw.startsWith("/") ? raw : `/${raw}`;
+  }
+};
+
 const withAuthToken = (baseUrl, path = "/") => {
-  const url = new URL(path, `${normalizeBaseUrl(baseUrl)}/`);
+  const url = new URL(normalizeAppPath(path), `${normalizeBaseUrl(baseUrl)}/`);
   if (sessionState?.token) {
     url.searchParams.set("authToken", sessionState.token);
   }
@@ -56,7 +70,7 @@ const renderLoggedIn = () => {
   setConnectionState(true);
   openWebButton.hidden = false;
   logoutButton.hidden = false;
-  const nextSrc = withAuthToken(sessionState.baseUrl, "/");
+  const nextSrc = withAuthToken(sessionState.baseUrl, sessionState.lastPath || "/");
   if (appFrame.src !== nextSrc) {
     appFrame.src = nextSrc;
   }
@@ -97,6 +111,7 @@ const validateSession = async (baseUrlOverride = "") => {
     await storeSession({
       ...sessionState,
       baseUrl,
+      lastPath: normalizeAppPath(sessionState?.lastPath || "/"),
       user: payload.user || sessionState.user || null,
     });
     renderLoggedIn();
@@ -113,7 +128,7 @@ openLoginTabButton.addEventListener("click", async () => {
 
 openWebButton.addEventListener("click", async () => {
   if (!sessionState?.baseUrl) return;
-  await chrome.tabs.create({ url: withAuthToken(sessionState.baseUrl, "/") });
+  await chrome.tabs.create({ url: withAuthToken(sessionState.baseUrl, sessionState.lastPath || "/") });
 });
 
 logoutButton.addEventListener("click", async () => {
@@ -152,9 +167,21 @@ chrome.runtime.onMessage.addListener((message) => {
       token: payload.token || sessionState?.token || "",
       baseUrl: normalizeBaseUrl(payload.baseUrl || sessionState?.baseUrl || baseUrlInput.value),
       user: payload.user || sessionState?.user || null,
+      lastPath: normalizeAppPath(payload.lastPath || sessionState?.lastPath || "/"),
     };
     setFeedback("");
     renderLoggedIn();
+    return;
+  }
+
+  if (message?.type === "SIDEKICK_EXTENSION_ROUTE") {
+    const payload = message.payload || {};
+    if (!sessionState?.token) return;
+    sessionState = {
+      ...sessionState,
+      lastPath: normalizeAppPath(payload.lastPath || sessionState.lastPath || "/"),
+    };
+    void storeSession(sessionState);
     return;
   }
 

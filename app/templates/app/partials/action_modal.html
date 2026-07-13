@@ -1,6 +1,19 @@
 <!-- Author Petar Jovanovic -->
 <div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_dialog_url }}" data-overlay-kind="action-modal">
-  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
+  <section class="modal-card {% if action_modal.type == 'delete-item' %}modal-card--confirm{% endif %}" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
+    {% if action_modal.type == "delete-item" %}
+      <div class="confirm-modal">
+        <h2 id="action-modal-title" class="confirm-modal__title">{{ action_modal.copy }}</h2>
+        <div class="modal-actions modal-actions--split confirm-modal__actions">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <form method="post" action="{{ action_modal.action_url }}" data-delete-item-form data-item-id="{{ action_modal.item_id }}">
+            {% csrf_token %}
+            <input type="hidden" name="item_id" value="{{ action_modal.item_id }}">
+            <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">{{ action_modal.confirm_label }}</button>
+          </form>
+        </div>
+      </div>
+    {% else %}
     <div class="modal-header">
       <h2 id="action-modal-title">
         {% if action_modal.type == "change-password" %}
@@ -213,6 +226,7 @@
           </div>
         </div>
       {% endif %}
+    {% endif %}
     {% endif %}
   </section>
 </div>

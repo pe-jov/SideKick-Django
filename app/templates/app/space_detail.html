@@ -24,7 +24,7 @@
       <div class="space-hero-copy">
         <div>
           <h2>{{ space.name }}</h2>
-          <p>{{ space.role }} • {{ item_count }} Items</p>
+          <p data-space-item-count data-space-role="{{ space.role }}">{{ space.role }} • {{ item_count }} Items</p>
         </div>
       </div>
       <div class="space-hero-actions">
@@ -40,6 +40,7 @@
         </a>
         {% if space.role == "Owner" %}
           <a class="button header-button" href="{{ space_settings_url }}">
+            <span class="icon">{% include "app/partials/icons/settings.svg" %}</span>
             <span class="optional-label">Edit Space</span>
           </a>
         {% endif %}
@@ -65,9 +66,8 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="empty-state">
-        <h3>This space is empty</h3>
-        <p class="launchpad-copy">Use Add Item to save your first note, link, or image here.</p>
+      <div class="empty-state empty-state--space">
+        <p>This space is empty</p>
       </div>
     {% endif %}
     </section>

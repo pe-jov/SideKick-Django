@@ -225,7 +225,7 @@ img {
 
 .main-content {
   width: min(1180px, 100%);
-  margin: 12px auto 0;
+  margin: 6px auto 0;
   padding: 0 24px;
 }
 
@@ -351,7 +351,11 @@ img {
 }
 
 .home-space-section {
-  padding-top: 20px;
+  padding-top: 8px;
+}
+
+.home-space-section + .home-inbox-section {
+  margin-top: 24px;
 }
 
 .home-section-toolbar {
@@ -514,6 +518,7 @@ img {
 }
 
 .space-card {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -528,6 +533,23 @@ img {
 
 .space-card:hover {
   transform: scale(1.02);
+}
+
+.space-role-icon {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
+}
+
+.space-role-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .space-thumb {
@@ -566,12 +588,14 @@ img {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  width: 100%;
+  min-height: 100%;
   min-width: 0;
   text-align: center;
 }
 
 .space-name {
-  margin-bottom: 4px;
+  margin: 0;
   font-size: 19px;
   font-weight: 600;
   line-height: 1.18;
@@ -646,7 +670,9 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
 
 .item-card {
   break-inside: avoid;
-  align-self: start;
+  display: block;
+  width: 100%;
+  align-self: stretch;
   overflow: hidden;
   margin-bottom: 16px;
   border-radius: 32px;
@@ -715,6 +741,7 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  width: 100%;
   padding: 24px;
   background: var(--panel);
 }
@@ -846,6 +873,7 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+  margin-left: auto;
 }
 
 .space-hero h2 {
@@ -1086,6 +1114,11 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
   animation: modalIn 200ms ease;
 }
 
+.modal-card--confirm {
+  width: min(420px, calc(100% - 32px));
+  border-radius: 28px;
+}
+
 .modal-card.wide {
   width: min(760px, 100%);
 }
@@ -1290,6 +1323,29 @@ body.modal-scroll-locked {
   margin: 0;
   font-size: 17px;
   font-weight: 600;
+}
+
+.confirm-modal {
+  display: grid;
+  gap: 24px;
+  padding: 28px;
+}
+
+.confirm-modal__title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  text-align: center;
+}
+
+.confirm-modal__actions {
+  margin-top: 4px;
+}
+
+.confirm-modal__actions form {
+  margin: 0;
 }
 
 .modal-subtitle {
@@ -1597,17 +1653,18 @@ body.modal-scroll-locked {
 }
 
 .animate-in {
-  animation: contentIn 500ms ease both;
+  animation: contentIn 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .animate-in.slow {
-  animation-duration: 700ms;
+  animation-duration: 220ms;
+  animation-delay: 40ms;
 }
 
 @keyframes contentIn {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -1618,11 +1675,26 @@ body.modal-scroll-locked {
 @keyframes modalIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-in.slow,
+  .modal-card {
+    animation: none !important;
+  }
+
+  .button,
+  .space-card,
+  .item-card,
+  .nav-button {
+    transition: none !important;
   }
 }
 
@@ -1721,15 +1793,42 @@ body.modal-scroll-locked {
     text-align: center;
   }
 
-  .space-hero,
-  .space-hero-copy {
-    flex-direction: column;
+  .space-hero {
     align-items: flex-start;
+    gap: 16px;
+  }
+
+  .space-hero-copy {
+    flex: 1;
+    min-width: 0;
   }
 
   .space-hero-actions {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    width: auto;
+  }
+
+  .filter-toolbar {
+    display: grid;
+    gap: 12px;
+    overflow: visible;
+  }
+
+  .filter-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    overflow: visible;
+  }
+
+  .filter-row .filter-label {
     width: 100%;
-    justify-content: flex-start;
+    margin-bottom: 2px;
   }
 
   .bottom-nav {
@@ -1788,6 +1887,10 @@ body.modal-scroll-locked {
 .modal-actions--split {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.modal-actions--split > * {
+  min-width: 0;
 }
 
 .modal-action-button {
@@ -2095,6 +2198,24 @@ body.modal-scroll-locked {
 }
 
 .empty-state--inbox p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+}
+
+.empty-state--space {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  align-content: center;
+}
+
+.empty-state--space p {
   margin: 0;
   color: var(--muted);
   font-size: 15px;

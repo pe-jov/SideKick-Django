@@ -5,7 +5,7 @@ from django.test import TestCase
 from django.utils import timezone
 
 from app.models import Item, ResearchSpace, User
-from app.views import create_item_record, extract_title_from_html, title_from_domain
+from app.views import create_item_record, extract_title_from_html, title_from_domain, title_from_url_path
 
 
 class LinkMetadataTests(TestCase):
@@ -77,3 +77,13 @@ class LinkMetadataTests(TestCase):
         self.assertEqual(item.title, "Institucije Ukljucene U Istragu Incidenta")
         self.assertEqual(item.page_title, "Institucije Ukljucene U Istragu Incidenta")
         read_url_metadata.assert_called_once()
+
+    def test_title_from_url_path_ignores_generic_news_segments(self):
+        title = title_from_url_path(
+            "https://www.newsmaxbalkans.com/region/vest/incident-u-avionu-rajanera-u-kom-je-povreden-drzavljanin-srbije"
+        )
+
+        self.assertEqual(
+            title,
+            "Incident U Avionu Rajanera U Kom Je Povreden Drzavljanin Srbije",
+        )

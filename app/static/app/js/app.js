@@ -250,6 +250,9 @@ const isLocalUiStateUrl = (value) => {
 
 const loadUiState = async (url, { pushHistory = false } = {}) => {
   try {
+    if (itemContextMenu) {
+      itemContextMenu.hidden = true;
+    }
     const targetUrl = appendExtensionAuth(url);
     const response = await fetch(targetUrl, {
       headers: {
@@ -399,6 +402,49 @@ const scheduleFlashDismissal = () => {
   });
 };
 
+const syncVisibleSpaceItemCount = () => {
+  const countLabel = document.querySelector("[data-space-item-count]");
+  const itemTarget = document.querySelector("[data-filter-scope='space-items'] [data-filter-target='items']");
+  if (!countLabel || !itemTarget) return;
+
+  const count = itemTarget.querySelectorAll(".item-card").length;
+  const role = countLabel.dataset.spaceRole || "";
+  const itemLabel = count === 1 ? "Item" : "Items";
+  countLabel.textContent = role ? `${role} • ${count} ${itemLabel}` : `${count} ${itemLabel}`;
+};
+
+const reconcileItemCollectionState = (scope) => {
+  if (!scope) return;
+
+  const target = scope.querySelector("[data-filter-target='items']");
+  const cards = [...scope.querySelectorAll(".item-card")];
+  const baseEmptyState = scope.querySelector(".empty-state--inbox, .empty-state--space");
+  const filteredEmptyState = scope.querySelector("[data-filter-empty-state]");
+
+  if (cards.length === 0) {
+    filteredEmptyState?.remove();
+    target?.remove();
+    if (!baseEmptyState) {
+      const emptyState = document.createElement("div");
+      if (scope.classList.contains("home-inbox-section")) {
+        emptyState.className = "empty-state empty-state--inbox";
+        emptyState.innerHTML = "<p>Inbox empty</p>";
+      } else {
+        emptyState.className = "empty-state empty-state--space";
+        emptyState.innerHTML = "<p>This space is empty</p>";
+      }
+      scope.appendChild(emptyState);
+    }
+    syncVisibleSpaceItemCount();
+    return;
+  }
+
+  baseEmptyState?.remove();
+  applyClientFilters(scope);
+  refreshOrderedItemMasonry(scope);
+  syncVisibleSpaceItemCount();
+};
+
 const waitForExtensionBridgeAck = (timeoutMs = 1800) => new Promise((resolve) => {
   let settled = false;
   const timer = window.setTimeout(() => {
@@ -474,6 +520,55 @@ if (connectExtensionForm) {
 }
 
 scheduleFlashDismissal();
+
+document.addEventListener("submit", async (event) => {
+  const form = event.target.closest("[data-delete-item-form]");
+  if (!form) return;
+
+  event.preventDefault();
+
+  const itemId = form.dataset.itemId || form.querySelector('input[name="item_id"]')?.value;
+  if (!itemId) {
+    showInlineMessage("This item could not be deleted.", "error");
+    return;
+  }
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  const formData = new FormData(form);
+  appendAuthToFormData(formData);
+  const csrfToken = form.querySelector('input[name="csrfmiddlewaretoken"]')?.value || "";
+
+  submitButton?.setAttribute("disabled", "disabled");
+
+  try {
+    const response = await fetch(appendExtensionAuth(form.action), {
+      method: "POST",
+      body: formData,
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        ...(csrfToken ? { "X-CSRFToken": csrfToken } : {}),
+      },
+      credentials: "same-origin",
+    });
+
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
+      showInlineMessage(payload?.error?.message || "This item could not be deleted.", "error");
+      submitButton?.removeAttribute("disabled");
+      return;
+    }
+
+    document.querySelectorAll(`.item-card[data-item-id='${String(itemId)}']`).forEach((card) => card.remove());
+    const scope = document.querySelector("[data-filter-scope='space-items'], [data-filter-scope='home-inbox']");
+    closeDynamicOverlay(form);
+    reconcileItemCollectionState(scope);
+    showInlineMessage("Item deleted.", "success");
+  } catch {
+    showInlineMessage("This item could not be deleted.", "error");
+  } finally {
+    submitButton?.removeAttribute("disabled");
+  }
+}, true);
 
 const filterValueMatches = (key, filterValue, card) => {
   if (filterValue === "All") return true;
@@ -1459,6 +1554,10 @@ if (itemContextMenu && itemContextAction && (itemCardsWithMenu.length > 0 || mem
     if (!itemContextMenu.contains(event.target)) {
       hideItemContextMenu();
     }
+  });
+
+  itemContextAction.addEventListener("click", () => {
+    hideItemContextMenu();
   });
 
   window.addEventListener("scroll", hideItemContextMenu, true);

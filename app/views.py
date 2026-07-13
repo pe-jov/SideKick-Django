@@ -184,20 +184,76 @@ def read_url_title(url):
     return extract_title_from_html(html)
 
 
+GENERIC_LINK_PATH_SEGMENTS = {
+    "article",
+    "articles",
+    "blog",
+    "category",
+    "clanak",
+    "clanci",
+    "news",
+    "objava",
+    "post",
+    "posts",
+    "region",
+    "story",
+    "stories",
+    "tekst",
+    "vest",
+    "vesti",
+    "video",
+    "videos",
+    "world",
+}
+
+
+def normalize_path_segment_title(segment):
+    candidate = re.sub(r"\.[A-Za-z0-9]+$", "", segment or "")
+    candidate = re.sub(r"[-_]+", " ", candidate)
+    candidate = re.sub(r"\s+", " ", candidate).strip()
+    return candidate
+
+
 def title_from_url_path(url):
     parsed = urlparse(url)
     path_parts = [part for part in parsed.path.split("/") if part]
     if not path_parts:
         return ""
-    candidate = path_parts[-1]
-    candidate = re.sub(r"\.[A-Za-z0-9]+$", "", candidate)
-    candidate = re.sub(r"[-_]+", " ", candidate)
-    candidate = re.sub(r"\s+", " ", candidate).strip()
-    if not candidate or len(candidate) < 4:
+
+    ranked_candidates = []
+    for index, segment in enumerate(path_parts):
+        candidate = normalize_path_segment_title(segment)
+        if not candidate or len(candidate) < 4:
+            continue
+        if re.fullmatch(r"[0-9]+", candidate):
+            continue
+        if candidate.lower() in GENERIC_LINK_PATH_SEGMENTS:
+            continue
+        score = (
+            len(candidate.split()),
+            len(candidate),
+            index,
+        )
+        ranked_candidates.append((score, candidate))
+
+    if ranked_candidates:
+        best_candidate = max(ranked_candidates, key=lambda item: item[0])[1]
+        return best_candidate.title()[:255]
+
+    fallback_candidates = []
+    for index, segment in enumerate(path_parts):
+        candidate = normalize_path_segment_title(segment)
+        if not candidate or len(candidate) < 4:
+            continue
+        if re.fullmatch(r"[0-9]+", candidate):
+            continue
+        fallback_candidates.append(((len(candidate), index), candidate))
+
+    if not fallback_candidates:
         return ""
-    if re.fullmatch(r"[0-9]+", candidate):
-        return ""
-    return candidate.title()[:255]
+
+    best_candidate = max(fallback_candidates, key=lambda item: item[0])[1]
+    return best_candidate.title()[:255]
 
 
 def title_from_domain(url):
@@ -748,8 +804,8 @@ def build_action_modal(request, *, selected_space=None, items=None):
         if selected_item:
             return {
                 "type": "delete-item",
-                "title": "Delete Item",
-                "copy": f'Stavka koju je dodao {selected_item["added_by"]} bi bila trajno uklonjena iz prikaza.',
+                "title": "Delete item",
+                "copy": "Delete this item?",
                 "confirm_label": "Delete item",
                 "action_url": reverse("app:delete_item"),
                 "item_id": selected_item["id"],
@@ -1569,6 +1625,8 @@ def delete_item(request):
     if request.method != "POST":
         return redirect_with_request_auth(request, reverse("app:home"))
 
+    is_ajax_request = request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
     item_id = request.POST.get("item_id")
     item = (
         Item.objects.select_related("space")
@@ -1576,12 +1634,31 @@ def delete_item(request):
         .first()
     )
     if item is None:
+        if is_ajax_request:
+            return json_error("Item not found.", status=404, code="item_not_found")
         return redirect_with_request_auth(request, reverse("app:home"))
     if not can_delete_item_record(item, current_user):
+        if is_ajax_request:
+            return json_error("You do not have permission to delete this item.", status=403, code="forbidden")
         return redirect_with_request_auth(request, reverse("app:home"))
 
     source_space = item.space
+    now = timezone.now()
     item.delete()
+    if source_space is not None:
+        source_space.updated_at = now
+        source_space.save(update_fields=["updated_at"])
+
+    if is_ajax_request:
+        return JsonResponse(
+            {
+                "status": "ok",
+                "itemId": int(item_id),
+                "spaceId": source_space.space_id if source_space else None,
+                "isUniversalSpace": is_universal_space(source_space),
+            }
+        )
+
     if is_universal_space(source_space):
         return redirect_with_request_auth(request, reverse("app:home"))
     return redirect_with_request_auth(request, reverse("app:space_detail", args=[source_space.space_id]))
