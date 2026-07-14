@@ -1,3 +1,5 @@
+"""Glavna URL konfiguracija Django projekta SideKick."""
+
 # Author Petar Jovanovic
 from django.contrib import admin
 from django.conf import settings
@@ -5,6 +7,7 @@ from django.conf.urls.static import static
 from django.urls import include, path
 
 
+# Registruje administratorske i aplikativne rute na nivou celog projekta.
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("app.urls")),

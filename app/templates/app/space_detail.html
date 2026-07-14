@@ -11,14 +11,10 @@
       data-save-url="{{ save_item_url }}"
       data-space-id="{{ selected_space.id }}"
     {% endif %}
-  >
-    <div class="space-capture-overlay" data-space-capture-overlay hidden>
-      <div class="space-capture-overlay__card">
-        <p class="space-capture-overlay__eyebrow">Drop into {{ space.name }}</p>
-        <h3>Save an image, link, or note</h3>
-        <p>Release anywhere on the page and we will add it straight into this space.</p>
+    >
+      <div class="space-capture-overlay" data-space-capture-overlay hidden>
+        <p class="space-capture-overlay__text">Drop in {{ space.name }}</p>
       </div>
-    </div>
 
     <div class="space-hero animate-in">
       <div class="space-hero-copy">

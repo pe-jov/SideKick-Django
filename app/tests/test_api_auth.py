@@ -1,3 +1,5 @@
+"""Testovi za API autentikaciju i osnovne zaštićene tokove aplikacije."""
+
 import json
 
 from django.contrib.auth.hashers import make_password
@@ -9,7 +11,10 @@ from app.models import AuthToken, Item, ResearchSpace, User
 
 
 class ApiAuthTests(TestCase):
+    """Proverava registraciju, prijavu, odjavu i osnovni rad API tokena."""
+
     def setUp(self):
+        """Priprema korisnika i prostor koji se koriste u testovima."""
         now = timezone.now()
         self.owner = User.objects.create(
             email="owner@example.com",
@@ -28,6 +33,7 @@ class ApiAuthTests(TestCase):
         )
 
     def auth_header(self, token):
+        """Vraća Authorization zaglavlje za prosleđeni test token."""
         return {"HTTP_AUTHORIZATION": f"Token {token}"}
 
     def test_register_returns_token_and_persists_user(self):

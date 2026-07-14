@@ -1,3 +1,5 @@
+"""Testovi za izvlačenje naslova linkova i kreiranje link stavki."""
+
 from unittest.mock import patch
 
 from django.contrib.auth.hashers import make_password
@@ -9,7 +11,10 @@ from app.views import create_item_record, extract_title_from_html, title_from_do
 
 
 class LinkMetadataTests(TestCase):
+    """Proverava parsiranje naslova i rezervne heuristike za link preview podatke."""
+
     def setUp(self):
+        """Priprema korisnika i prostor za testiranje metapodataka linkova."""
         now = timezone.now()
         self.user = User.objects.create(
             email="metadata@example.com",

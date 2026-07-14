@@ -1,3 +1,5 @@
+"""Modeli baze podataka za aplikaciju SideKick."""
+
 # Author Petar Jovanovic
 from urllib.parse import urlparse
 
@@ -17,6 +19,8 @@ SPACE_COVERS = {
 
 
 class TimestampedModel(models.Model):
+    """Apstraktni bazni model koji čuva vreme kreiranja i poslednje izmene."""
+
     created_at = models.DateTimeField(db_column="createdAt")
     updated_at = models.DateTimeField(db_column="updatedAt")
 
@@ -25,6 +29,8 @@ class TimestampedModel(models.Model):
 
 
 class User(TimestampedModel):
+    """Model korisnika koji čuva osnovne podatke naloga i putanju do avatara."""
+
     user_id = models.AutoField(primary_key=True, db_column="userId")
     email = models.EmailField(unique=True)
     password_hash = models.CharField(max_length=255, db_column="passwordHash")
@@ -36,15 +42,21 @@ class User(TimestampedModel):
         ordering = ["user_id"]
 
     def __str__(self):
+        """Vraća puno ime korisnika za tekstualni prikaz modela."""
         return self.full_name
 
     @property
     def avatar_url(self):
+        """Vraća URL avatara korisnika ili podrazumevanu siluetu ako avatar ne postoji."""
         return self.avatar_path or DEFAULT_AVATAR_URL
 
 
 class AuthToken(models.Model):
+    """Model tokena koji služi za autentifikaciju web i ekstenzionih klijenata."""
+
     class ClientType(models.TextChoices):
+        """Definiše tip klijenta kojem je token izdat."""
+
         WEB = "web", "Web"
         EXTENSION = "extension", "Extension"
 
@@ -65,10 +77,13 @@ class AuthToken(models.Model):
         ordering = ["token_id"]
 
     def __str__(self):
+        """Vraća tekstualni opis tokena sa korisnikom i tipom klijenta."""
         return f"{self.user.full_name} ({self.client_type})"
 
 
 class ResearchSpace(TimestampedModel):
+    """Model istraživačkog prostora u kome korisnici organizuju sačuvane stavke."""
+
     space_id = models.AutoField(primary_key=True, db_column="spaceId")
     owner = models.ForeignKey(
         User, on_delete=models.PROTECT, related_name="owned_spaces", db_column="ownerId"
@@ -82,10 +97,12 @@ class ResearchSpace(TimestampedModel):
         ordering = ["space_id"]
 
     def __str__(self):
+        """Vraća naziv prostora za tekstualni prikaz modela."""
         return self.name
 
     @property
     def image_url(self):
+        """Vraća URL naslovne slike prostora na osnovu njegovog naziva."""
         return SPACE_COVERS.get(
             slugify(self.name),
             "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=900&q=80",
@@ -93,11 +110,17 @@ class ResearchSpace(TimestampedModel):
 
 
 class Membership(TimestampedModel):
+    """Model članstva koji povezuje korisnika sa prostorom i njegovom ulogom."""
+
     class Role(models.TextChoices):
+        """Definiše ulogu korisnika unutar prostora."""
+
         COLLABORATOR = "collaborator", "Collaborator"
         VIEWER = "viewer", "Viewer"
 
     class Status(models.TextChoices):
+        """Definiše status članstva korisnika u prostoru."""
+
         ACTIVE = "active", "Active"
         REMOVED = "removed", "Removed"
 
@@ -127,11 +150,16 @@ class Membership(TimestampedModel):
         ]
 
     def __str__(self):
+        """Vraća tekstualni opis članstva korisnika u prostoru."""
         return f"{self.user.full_name} in {self.space.name}"
 
 
 class CollaborationRequest(models.Model):
+    """Model zahteva za dobijanje saradničkog pristupa prostoru."""
+
     class Status(models.TextChoices):
+        """Definiše status zahteva za saradnju."""
+
         PENDING = "pending", "Pending"
         APPROVED = "approved", "Approved"
         REJECTED = "rejected", "Rejected"
@@ -167,16 +195,23 @@ class CollaborationRequest(models.Model):
         ordering = ["request_id"]
 
     def __str__(self):
+        """Vraća tekstualni opis zahteva za saradnju."""
         return f"{self.requester.full_name} -> {self.space.name}"
 
 
 class Item(TimestampedModel):
+    """Model stavke koja predstavlja tekst, link ili sliku sačuvanu u prostoru."""
+
     class ItemType(models.TextChoices):
+        """Definiše tip sadržaja koji stavka čuva."""
+
         TEXT = "text", "Text"
         LINK = "link", "Link"
         IMAGE = "image", "Image"
 
     class SourcePlatform(models.TextChoices):
+        """Definiše sa koje platforme je stavka sačuvana."""
+
         WEB = "web", "Web"
         EXTENSION = "extension", "Extension"
 
@@ -204,10 +239,12 @@ class Item(TimestampedModel):
         ordering = ["item_id"]
 
     def __str__(self):
+        """Vraća tekstualni opis stavke i prostora kome pripada."""
         return f"{self.item_type} in {self.space.name}"
 
     @property
     def domain(self):
+        """Vraća domen izvornog ili zabeleženog URL-a stavke."""
         url = self.source_url or self.captured_url
         if not url:
             return ""
@@ -215,6 +252,7 @@ class Item(TimestampedModel):
 
     @property
     def image_url(self):
+        """Vraća URL slike stavke iz lokalne putanje ili izvornog linka."""
         if self.image_path:
             return self.image_path
         if self.source_url:
@@ -223,6 +261,8 @@ class Item(TimestampedModel):
 
 
 class ShareLink(models.Model):
+    """Model linka za deljenje prostora sa drugim korisnicima."""
+
     share_link_id = models.AutoField(primary_key=True, db_column="shareLinkId")
     space = models.ForeignKey(
         ResearchSpace, on_delete=models.CASCADE, related_name="share_links", db_column="spaceId"
@@ -240,8 +280,10 @@ class ShareLink(models.Model):
         ordering = ["share_link_id"]
 
     def __str__(self):
+        """Vraća tekstualni opis deljenog linka."""
         return f"{self.space.name} share link"
 
     @property
     def is_available(self):
+        """Vraća informaciju da li je deljeni link trenutno aktivan i neistekao."""
         return self.is_active and (self.expires_at is None or self.expires_at > timezone.now())

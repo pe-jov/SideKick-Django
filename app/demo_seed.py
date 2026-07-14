@@ -1,3 +1,5 @@
+"""Pomoćne strukture i funkcije za ponovno popunjavanje demo podataka aplikacije."""
+
 from __future__ import annotations
 
 import shutil
@@ -16,6 +18,7 @@ DEFAULT_PASSWORD = "Sidekick123!"
 
 @dataclass(frozen=True)
 class UserSeed:
+    """Opis jednog demo korisnika koji se koristi prilikom seed-ovanja baze."""
     key: str
     full_name: str
     email: str
@@ -23,6 +26,7 @@ class UserSeed:
 
 @dataclass(frozen=True)
 class SpaceSeed:
+    """Opis jednog demo prostora sa osnovnim metapodacima i vremenima."""
     key: str
     owner: str
     name: str
@@ -33,6 +37,7 @@ class SpaceSeed:
 
 @dataclass(frozen=True)
 class ItemSeed:
+    """Opis jedne demo stavke koja se ubacuje u odgovarajući prostor."""
     space: str
     added_by: str
     item_type: str
@@ -249,12 +254,14 @@ ITEMS = [
 
 
 def reset_uploaded_media(base_dir: Path) -> None:
+    """Briše prethodno generisane otpremljene fajlove iz demo okruženja."""
     uploads_dir = base_dir / "media" / "uploads"
     if uploads_dir.exists():
         shutil.rmtree(uploads_dir)
 
 
 def rebuild_demo_data(*, base_dir: Path) -> dict[str, list[str]]:
+    """Ponovo kreira demo korisnike, prostore i stavke i vraća sažetak unetih podataka."""
     reset_uploaded_media(base_dir)
 
     Item.objects.all().delete()

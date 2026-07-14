@@ -1,3 +1,5 @@
+"""Testovi za P1 tokove: profil, saradnja, deljenje i dozvole pristupa."""
+
 import json
 
 from django.contrib.auth.hashers import check_password, make_password
@@ -10,7 +12,10 @@ from app.models import AuthToken, CollaborationRequest, Item, Membership, Resear
 
 
 class P1FlowTests(TestCase):
+    """Proverava ključne P1 funkcionalnosti i pravila dozvola u aplikaciji."""
+
     def setUp(self):
+        """Priprema korisnike, tokenе, prostor i deljeni link za P1 scenarije."""
         now = timezone.now()
         self.owner = User.objects.create(
             email="p1-owner@example.com",
@@ -90,9 +95,11 @@ class P1FlowTests(TestCase):
         )
 
     def auth_header(self, token):
+        """Vraća Authorization zaglavlje za prosleđeni API token."""
         return {"HTTP_AUTHORIZATION": f"Token {token}"}
 
     def login_session(self, user):
+        """Postavlja sesiju prijavljenog korisnika za web tokove u testovima."""
         session = self.client.session
         session["sidekick_user_id"] = user.user_id
         session.save()

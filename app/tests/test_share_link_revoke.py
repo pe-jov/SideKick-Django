@@ -1,3 +1,5 @@
+"""Testovi za opoziv deljenih linkova i posledice po viewer pristup."""
+
 import json
 
 from django.contrib.auth.hashers import make_password
@@ -9,7 +11,10 @@ from app.models import AuthToken, Membership, ResearchSpace, ShareLink, User
 
 
 class ShareLinkRevokeTests(TestCase):
+    """Proverava da opoziv deljenog linka uklanja viewer pristup, ali ne i saradnike."""
+
     def setUp(self):
+        """Priprema vlasnika, članove, prostor i deljeni link za test opoziva."""
         now = timezone.now()
         self.owner = User.objects.create(
             email="owner-share@example.com",
@@ -92,6 +97,7 @@ class ShareLinkRevokeTests(TestCase):
         )
 
     def auth_header(self, token):
+        """Vraća Authorization zaglavlje za prosleđeni test token."""
         return {"HTTP_AUTHORIZATION": f"Token {token}"}
 
     def test_revoke_share_link_removes_viewer_access_but_keeps_collaborator(self):

@@ -3,26 +3,32 @@
 
 {% block content %}
   <section class="section animate-in profile-shell">
-    <div class="profile-card profile-card--stacked">
-      <img class="profile-image" src="{{ profile_user.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
-      <div class="profile-copy">
-        <p class="profile-eyebrow">Account</p>
-        <h3>{{ profile_user.full_name }}</h3>
-        <p>{{ profile_user.email }}</p>
-        <div class="profile-stats">
-          <span class="status-pill">{{ profile_summary.owned_spaces }} owned</span>
-          <span class="status-pill">{{ profile_summary.shared_spaces }} shared</span>
-          <span class="status-pill">{{ profile_summary.saved_items }} items</span>
+    <div class="profile-section">
+      <div class="home-section-toolbar profile-section-toolbar">
+        <div class="home-toolbar-main">
+          <h2 class="section-title">Account</h2>
+        </div>
+      </div>
+      <div class="profile-account">
+        <img class="profile-image" src="{{ profile_user.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
+        <div class="profile-copy">
+          <h3>{{ profile_user.full_name }}</h3>
+          <p>{{ profile_user.email }}</p>
+          <div class="profile-stats">
+            <span class="status-pill">{{ profile_summary.owned_spaces }} owned</span>
+            <span class="status-pill">{{ profile_summary.shared_spaces }} shared</span>
+            <span class="status-pill">{{ profile_summary.saved_items }} items</span>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="profile-panel">
-      <div class="profile-panel__header">
-        <h3>Profile Settings</h3>
-        <p class="launchpad-copy">Keep your account details current and secure.</p>
+    <div class="profile-section">
+      <div class="home-section-toolbar profile-section-toolbar">
+        <div class="home-toolbar-main">
+          <h2 class="section-title">Profile Settings</h2>
+        </div>
       </div>
-
       <div class="profile-actions">
         {% if not is_extension_mode %}
           <form method="post" action="{{ connect_extension_url }}" class="extension-connect-form" data-connect-extension-form>

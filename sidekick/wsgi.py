@@ -1,3 +1,5 @@
+"""WSGI ulazna tačka za pokretanje SideKick Django aplikacije."""
+
 # Author Petar Jovanovic
 import os
 

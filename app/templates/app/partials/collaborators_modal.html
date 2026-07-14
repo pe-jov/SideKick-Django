@@ -1,16 +1,16 @@
 <!-- Author Petar Jovanovic -->
 <div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_modal_url }}" data-overlay-kind="team-modal">
   <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="collaborators-title">
-    <div class="modal-header">
+    <a class="button close-button modal-close-floating" href="{{ close_modal_url }}" aria-label="Close collaborators">
+      {% include "app/partials/icons/x.svg" %}
+    </a>
+    <div class="modal-content-shell">
       <div>
-        <h2 id="collaborators-title">Team</h2>
+        <h2 id="collaborators-title" class="modal-inline-title">Team</h2>
         {% if selected_space %}
           <p class="modal-subtitle">{{ selected_space.name }}</p>
         {% endif %}
       </div>
-      <a class="button close-button" href="{{ close_modal_url }}" aria-label="Close collaborators">
-        {% include "app/partials/icons/x.svg" %}
-      </a>
     </div>
 
     {% if can_manage_members and pending_collaboration_requests %}
@@ -71,6 +71,7 @@
           </form>
         {% endif %}
       {% endif %}
+    </div>
     </div>
   </section>
 </div>

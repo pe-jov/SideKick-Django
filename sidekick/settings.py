@@ -1,3 +1,5 @@
+"""Osnovna Django podešavanja za lokalno razvojno okruženje aplikacije SideKick."""
+
 # Author Petar Jovanovic
 from pathlib import Path
 

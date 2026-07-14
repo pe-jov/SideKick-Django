@@ -2,6 +2,9 @@
 <div class="modal-backdrop" data-modal-backdrop data-close-url="{{ close_dialog_url }}" data-overlay-kind="action-modal">
   <section class="modal-card {% if action_modal.type == 'delete-item' %}modal-card--confirm{% endif %}" role="dialog" aria-modal="true" aria-labelledby="action-modal-title">
     {% if action_modal.type == "delete-item" %}
+      <a class="button close-button modal-close-floating" href="{{ close_dialog_url }}" aria-label="Close dialog">
+        {% include "app/partials/icons/x.svg" %}
+      </a>
       <div class="confirm-modal">
         <h2 id="action-modal-title" class="confirm-modal__title">{{ action_modal.copy }}</h2>
         <div class="modal-actions modal-actions--split confirm-modal__actions">
@@ -14,22 +17,14 @@
         </div>
       </div>
     {% else %}
-    <div class="modal-header">
-      <h2 id="action-modal-title">
-        {% if action_modal.type == "change-password" %}
-          Change Password
-        {% else %}
-          {{ action_modal.title }}
-        {% endif %}
-      </h2>
-      <a class="button close-button" href="{{ close_dialog_url }}" aria-label="Close dialog">
-        {% include "app/partials/icons/x.svg" %}
-      </a>
-    </div>
-
+    <a class="button close-button modal-close-floating" href="{{ close_dialog_url }}" aria-label="Close dialog">
+      {% include "app/partials/icons/x.svg" %}
+    </a>
+    <div class="modal-content-shell">
     {% if action_modal.type == "change-password" %}
       <form class="form-stack" method="post" action="{{ change_password_url }}" data-change-password-form>
         {% csrf_token %}
+        <h2 id="action-modal-title" class="modal-inline-title">Change Password</h2>
         <p class="mock-panel-copy">Enter the current password before setting a new one.</p>
         <label>
           <span class="sr-only">Current password</span>
@@ -48,15 +43,16 @@
             <li>{{ rule }}</li>
           {% endfor %}
         </ul>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Save Password</button>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Save Password</button>
         </div>
         <p class="mock-login-feedback" data-password-feedback aria-live="polite"></p>
       </form>
     {% elif action_modal.type == "edit-profile" %}
       <form class="form-stack" method="post" action="{{ update_profile_url }}" enctype="multipart/form-data">
         {% csrf_token %}
+        <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
         <div class="profile-avatar-input">
           <img class="profile-avatar-preview" src="{{ action_modal.avatar_url }}" alt="Profile" referrerpolicy="no-referrer">
           <label class="button neutral-button profile-avatar-upload">
@@ -72,14 +68,15 @@
           <span class="sr-only">Email</span>
           <input class="form-input" type="email" name="email" value="{{ action_modal.email }}" required>
         </label>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Save Profile</button>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Save Profile</button>
         </div>
       </form>
     {% elif action_modal.type == "create-space" %}
       <form class="form-stack" method="post" action="{{ save_space_url }}">
         {% csrf_token %}
+        <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
         <label>
           <span class="sr-only">Space name</span>
           <input class="form-input" type="text" name="name" placeholder="Space name" required>
@@ -88,15 +85,16 @@
           <span class="sr-only">Description</span>
           <textarea class="form-textarea" name="description" placeholder="Description"></textarea>
         </label>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Create Space</button>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Create Space</button>
         </div>
       </form>
     {% elif action_modal.type == "space-settings" %}
       <form class="form-stack" method="post" action="{{ update_space_url }}">
         {% csrf_token %}
         <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
         <p class="mock-panel-copy">Update the space title and description here.</p>
         <label>
           <span class="sr-only">Space name</span>
@@ -127,15 +125,12 @@
         <input type="hidden" name="content_text" data-content-hidden>
         <input type="hidden" name="source_url" data-source-hidden>
         <input type="hidden" name="link_title" data-link-title-hidden>
-        <p class="mock-panel-copy">Saving into {{ action_modal.space_name }}</p>
-        <div class="item-capture-status">
-          <span class="status-pill" data-capture-status>Text</span>
-        </div>
+        <p class="mock-panel-copy">Saving <span data-capture-status-label>text</span> into {{ action_modal.space_name }}</p>
         <input class="sr-only" type="file" name="image_file" accept="image/*" data-image-file-input>
         <div class="item-capture-panel" data-capture-panel data-capture-mode="idle">
           <textarea
             class="form-textarea item-capture-field"
-            placeholder="Paste a link, press Ctrl+V, or start typing."
+            placeholder="Start typing, paste text, or press Ctrl+V."
             data-item-capture-field
           ></textarea>
           <div class="item-capture-preview" data-upload-state hidden>
@@ -157,6 +152,7 @@
       <form class="form-stack" method="post" action="{{ invite_member_url }}">
         {% csrf_token %}
         <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+        <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
         <p class="mock-panel-copy">Invite an existing registered user into {{ action_modal.space_name }}.</p>
         <label>
           <span class="sr-only">Email</span>
@@ -169,14 +165,15 @@
             <option value="viewer">Viewer</option>
           </select>
         </label>
-        <div class="modal-actions">
-          <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-          <button class="invite-button" type="submit">Send Invite</button>
+        <div class="modal-actions modal-actions--split">
+          <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+          <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Send Invite</button>
         </div>
       </form>
     {% elif action_modal.type == "share-link" %}
       {% if action_modal.share_url %}
         <div class="form-stack">
+          <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
           <p class="mock-panel-copy">Anyone with this link can join the space as a viewer or request collaborator access.</p>
           <input class="form-input" type="text" value="{{ action_modal.share_url }}" readonly>
           <div class="modal-actions">
@@ -192,10 +189,11 @@
         <form class="form-stack" method="post" action="{% url 'app:create_share_link' %}">
           {% csrf_token %}
           <input type="hidden" name="space_id" value="{{ selected_space.id }}">
+          <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
           <p class="mock-panel-copy">Create a share link for this space.</p>
-          <div class="modal-actions">
-            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-            <button class="invite-button" type="submit">Create Link</button>
+          <div class="modal-actions modal-actions--split">
+            <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">Create Link</button>
           </div>
         </form>
       {% endif %}
@@ -218,22 +216,25 @@
           {% if action_modal.space_id %}
             <input type="hidden" name="space_id" value="{{ action_modal.space_id }}">
           {% endif %}
+          <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
           <p class="mock-panel-copy">{{ action_modal.copy }}</p>
-          <div class="modal-actions">
-            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-            <button class="invite-button" type="submit">{{ action_modal.confirm_label }}</button>
+          <div class="modal-actions modal-actions--split">
+            <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="button invite-button modal-action-button modal-action-button--pill" type="submit">{{ action_modal.confirm_label }}</button>
           </div>
         </form>
       {% else %}
         <div class="form-stack">
+          <h2 id="action-modal-title" class="modal-inline-title">{{ action_modal.title }}</h2>
           <p class="mock-panel-copy">{{ action_modal.copy }}</p>
-          <div class="modal-actions">
-            <a class="button neutral-button" href="{{ close_dialog_url }}">Cancel</a>
-            <button class="invite-button" type="button">{{ action_modal.confirm_label }}</button>
+          <div class="modal-actions modal-actions--split">
+            <a class="button neutral-button modal-action-button modal-action-button--pill" href="{{ close_dialog_url }}">Cancel</a>
+            <button class="button invite-button modal-action-button modal-action-button--pill" type="button">{{ action_modal.confirm_label }}</button>
           </div>
         </div>
       {% endif %}
     {% endif %}
+    </div>
     {% endif %}
   </section>
 </div>

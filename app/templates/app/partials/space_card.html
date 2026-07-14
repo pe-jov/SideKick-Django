@@ -6,7 +6,6 @@
   {% if space.can_accept_drop %}data-drop-space-id="{{ space.id }}"{% endif %}
   {% if not space.can_accept_drop %}data-drop-disabled="true"{% endif %}
 >
-  <span class="space-role-dot space-role-dot--{{ space.role|lower }}" aria-hidden="true"></span>
   <span class="sr-only">{{ space.role }}</span>
   <span class="space-copy">
     <span class="space-name">{{ space.name }}</span>

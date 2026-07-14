@@ -1275,6 +1275,7 @@ function initializeItemForm(itemForm) {
   const linkTitleHidden = itemForm.querySelector("[data-link-title-hidden]");
   const formFeedback = itemForm.querySelector("[data-item-form-feedback]");
   const captureStatus = itemForm.querySelector("[data-capture-status]");
+  const captureStatusLabel = itemForm.querySelector("[data-capture-status-label]");
   let captureMode = "text";
 
   const isLikelyUrl = (value) => /^https?:\/\//i.test(value.trim()) || /^[\w.-]+\.[A-Za-z]{2,}/.test(value.trim());
@@ -1294,6 +1295,9 @@ function initializeItemForm(itemForm) {
     }
     if (captureStatus) {
       captureStatus.textContent = mode === "image" ? "Image" : mode === "link" ? "Link" : "Text";
+    }
+    if (captureStatusLabel) {
+      captureStatusLabel.textContent = mode === "image" ? "image" : mode === "link" ? "link" : "text";
     }
   };
 

@@ -1,3 +1,5 @@
+"""Kontroleri i pomoćne funkcije za prikaz, autentikaciju i API sloj aplikacije SideKick."""
+
 # Author Petar Jovanovic
 import json
 import re
@@ -56,10 +58,12 @@ PASSWORD_VALIDATORS = [
 
 
 def json_error(message, *, status, code):
+    """Vraća JSON odgovor sa standardizovanom strukturom greške."""
     return JsonResponse({"error": {"code": code, "message": message}}, status=status)
 
 
 def parse_request_data(request):
+    """Vraća podatke iz zahteva kao rečnik ili QueryDict, odnosno `None` za neispravan JSON."""
     if request.content_type and request.content_type.startswith("application/json"):
         try:
             return json.loads(request.body.decode("utf-8") or "{}")
@@ -71,6 +75,7 @@ def parse_request_data(request):
 
 
 def password_validation_error(password):
+    """Vraća poruku o grešci za lozinku ili `None` kada lozinka prolazi sve provere."""
     for validator, message in PASSWORD_VALIDATORS:
         if not validator(password):
             return message
@@ -78,6 +83,7 @@ def password_validation_error(password):
 
 
 def fetch_html_document(url):
+    """Vraća HTML sadržaj prosleđene adrese ili prazan string ako čitanje ne uspe."""
     try:
         request = Request(
             url,
@@ -95,6 +101,7 @@ def fetch_html_document(url):
 
 
 def clean_metadata_title(value):
+    """Vraća očišćen i skraćen naslov izdvojen iz metapodataka stranice."""
     title = unescape(re.sub(r"\s+", " ", value or "")).strip()
     if not title:
         return ""
@@ -102,6 +109,7 @@ def clean_metadata_title(value):
 
 
 def title_looks_like_url(title):
+    """Vraća informaciju da li naslov zapravo liči na sirovi URL umesto na pravi naziv."""
     if not title:
         return True
     normalized = title.strip().lower()
@@ -113,6 +121,7 @@ def title_looks_like_url(title):
 
 
 def extract_title_from_html(html):
+    """Vraća najrelevantniji naslov izdvojen iz HTML dokumenta."""
     if not html:
         return ""
 
@@ -153,6 +162,7 @@ def extract_title_from_html(html):
 
 
 def extract_title_from_json_ld(payload):
+    """Vraća naslov pronađen u JSON-LD strukturi ili prazan string ako ga nema."""
     if isinstance(payload, list):
         for item in payload:
             title = extract_title_from_json_ld(item)
@@ -180,6 +190,7 @@ def extract_title_from_json_ld(payload):
 
 
 def read_url_title(url):
+    """Vraća naslov stranice dobijen iz HTML sadržaja zadatog URL-a."""
     html = fetch_html_document(url)
     return extract_title_from_html(html)
 
@@ -208,6 +219,7 @@ GENERIC_LINK_PATH_SEGMENTS = {
 
 
 def normalize_path_segment_title(segment):
+    """Vraća čitljiv tekst dobijen iz jednog segmenta putanje URL-a."""
     candidate = re.sub(r"\.[A-Za-z0-9]+$", "", segment or "")
     candidate = re.sub(r"[-_]+", " ", candidate)
     candidate = re.sub(r"\s+", " ", candidate).strip()
@@ -215,6 +227,7 @@ def normalize_path_segment_title(segment):
 
 
 def title_from_url_path(url):
+    """Vraća heuristički naslov izveden iz putanje URL-a."""
     parsed = urlparse(url)
     path_parts = [part for part in parsed.path.split("/") if part]
     if not path_parts:
@@ -257,6 +270,7 @@ def title_from_url_path(url):
 
 
 def title_from_domain(url):
+    """Vraća naslov izveden iz domena kada bolji naslov nije dostupan."""
     hostname = (urlparse(url).hostname or "").lower().replace("www.", "")
     if not hostname:
         return ""
@@ -264,10 +278,12 @@ def title_from_domain(url):
 
 
 def fallback_link_title(url):
+    """Vraća rezervni naslov linka izveden iz putanje ili domena."""
     return title_from_url_path(url) or title_from_domain(url)
 
 
 def oembed_endpoint_for_url(url):
+    """Vraća oEmbed endpoint za podržane servise ili prazan string kada ne postoji."""
     hostname = (urlparse(url).hostname or "").lower()
     if hostname in {"youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be"}:
         return f"https://www.youtube.com/oembed?{urlencode({'url': url, 'format': 'json'})}"
@@ -277,6 +293,7 @@ def oembed_endpoint_for_url(url):
 
 
 def read_url_metadata(url):
+    """Vraća metapodatke o linku, prvenstveno naslov, koristeći oEmbed ili HTML parsiranje."""
     endpoint = oembed_endpoint_for_url(url)
     if endpoint:
         try:
@@ -304,6 +321,7 @@ def read_url_metadata(url):
 
 
 def normalized_url(value):
+    """Vraća normalizovan URL sa šemom kada je to moguće."""
     value = (value or "").strip()
     if not value:
         return ""
@@ -316,11 +334,13 @@ def normalized_url(value):
 
 
 def looks_like_absolute_url(value):
+    """Vraća informaciju da li prosleđena vrednost predstavlja pun apsolutni URL."""
     parsed = urlparse(value or "")
     return bool(parsed.scheme and parsed.netloc)
 
 
 def issue_auth_token(user, *, client_type=AuthToken.ClientType.WEB):
+    """Kreira i vraća novi autentikacioni token za korisnika."""
     now = timezone.now()
     return AuthToken.objects.create(
         user=user,
@@ -333,6 +353,7 @@ def issue_auth_token(user, *, client_type=AuthToken.ClientType.WEB):
 
 
 def serialize_user_payload(user):
+    """Vraća korisnika serijalizovanog u oblik pogodан za API odgovor."""
     return {
         "id": user.user_id,
         "email": user.email,
@@ -343,6 +364,7 @@ def serialize_user_payload(user):
 
 
 def serialize_space_payload(space, current_user):
+    """Vraća prostor serijalizovan za API, zajedno sa ulogom tekućeg korisnika."""
     role = "owner" if is_owner(space, current_user) else membership_role(space, current_user) or "viewer"
     return {
         "id": space.space_id,
@@ -357,6 +379,7 @@ def serialize_space_payload(space, current_user):
 
 
 def serialize_item_payload(item):
+    """Vraća stavku serijalizovanu za API odgovor."""
     payload = {
         "id": item.item_id,
         "spaceId": item.space_id,
@@ -379,6 +402,7 @@ def serialize_item_payload(item):
 
 
 def get_token_from_request(request):
+    """Vraća vrednost tokena iz Authorization zaglavlja ili `None` ako ne postoji."""
     header = request.headers.get("Authorization", "").strip()
     if not header:
         return None
@@ -389,6 +413,7 @@ def get_token_from_request(request):
 
 
 def require_api_token(request):
+    """Vraća korisnika, token i eventualni JSON odgovor o grešci za API autentikaciju."""
     token_value = get_token_from_request(request)
     if not token_value:
         return None, None, json_error(
@@ -420,6 +445,7 @@ def require_api_token(request):
 
 
 def save_uploaded_image(uploaded_image, current_user):
+    """Smešta otpremljenu sliku i vraća njenu javnu putanju."""
     safe_name = slugify(uploaded_image.name.rsplit(".", 1)[0]) or "image"
     extension = uploaded_image.name.rsplit(".", 1)[-1].lower() if "." in uploaded_image.name else "bin"
     stored_path = default_storage.save(
@@ -430,6 +456,7 @@ def save_uploaded_image(uploaded_image, current_user):
 
 
 def save_uploaded_avatar(uploaded_image, current_user):
+    """Smešta otpremljeni avatar i vraća njegovu javnu putanju."""
     safe_name = slugify(uploaded_image.name.rsplit(".", 1)[0]) or "avatar"
     extension = uploaded_image.name.rsplit(".", 1)[-1].lower() if "." in uploaded_image.name else "bin"
     stored_path = default_storage.save(
@@ -440,6 +467,7 @@ def save_uploaded_avatar(uploaded_image, current_user):
 
 
 def create_item_record(*, current_user, space, item_type, content_text="", source_url="", title="", uploaded_image=None):
+    """Kreira novu stavku i vraća torku `(stavka, poruka_greške, kod_greške)`."""
     item_type = (item_type or Item.ItemType.TEXT).lower()
     valid_item_types = {choice for choice, _ in Item.ItemType.choices}
     if item_type not in valid_item_types:
@@ -497,6 +525,7 @@ def create_item_record(*, current_user, space, item_type, content_text="", sourc
 
 
 def sanitize_next_url(request, fallback):
+    """Vraća bezbednu internu povratnu adresu ili zadati podrazumevani URL."""
     next_url = request.POST.get("next_url") or request.GET.get("next") or fallback
     if next_url.startswith("/") and not next_url.startswith("//"):
         return next_url
@@ -504,6 +533,7 @@ def sanitize_next_url(request, fallback):
 
 
 def require_current_user(request):
+    """Vraća prijavljenog korisnika i eventualni redirect odgovor kada korisnik nije prijavljen."""
     current_user = get_current_user(request)
     if current_user is None:
         return None, redirect(reverse("app:home"))
@@ -511,32 +541,37 @@ def require_current_user(request):
 
 
 def is_owner(space, current_user):
+    """Vraća informaciju da li je prosleđeni korisnik vlasnik prostora."""
     return current_user is not None and space.owner_id == current_user.user_id
 
 
 def active_membership(space, current_user):
+    """Vraća aktivno članstvo korisnika u prostoru ili `None` ako ne postoji."""
     return get_membership(space, current_user)
 
 
 def membership_role(space, current_user):
+    """Vraća ulogu korisnika u prostoru ili `None` ako korisnik nema članstvo."""
     membership = active_membership(space, current_user)
     return membership.role if membership else None
 
 
 def can_add_items(space, current_user):
+    """Vraća informaciju da li korisnik sme da dodaje stavke u dati prostor."""
     if is_owner(space, current_user):
         return True
     return membership_role(space, current_user) == Membership.Role.COLLABORATOR
 
 
 def can_move_item_record(item, current_user, target_space):
+    """Vraća informaciju da li korisnik sme da premesti stavku u ciljni prostor."""
     if item is None or target_space is None:
         return False
     if is_universal_space(item.space):
         return (
             item.space.owner_id == current_user.user_id
             and item.added_by_id == current_user.user_id
-            and target_space.owner_id == current_user.user_id
+            and can_add_items(target_space, current_user)
         )
     if not can_add_items(target_space, current_user):
         return False
@@ -544,6 +579,7 @@ def can_move_item_record(item, current_user, target_space):
 
 
 def can_delete_item_record(item, current_user):
+    """Vraća informaciju da li korisnik sme da obriše prosleđenu stavku."""
     if is_owner(item.space, current_user):
         return True
     role = membership_role(item.space, current_user)
@@ -553,10 +589,12 @@ def can_delete_item_record(item, current_user):
 
 
 def can_manage_members(space, current_user):
+    """Vraća informaciju da li korisnik sme da upravlja članovima prostora."""
     return is_owner(space, current_user)
 
 
 def active_share_link(space):
+    """Vraća trenutno aktivan deljeni link prostora ili `None` ako ne postoji."""
     now = timezone.now()
     return (
         ShareLink.objects.filter(space=space, is_active=True)
@@ -567,6 +605,7 @@ def active_share_link(space):
 
 
 def latest_collaboration_request(space, user):
+    """Vraća poslednji zahtev za saradnju korisnika u prostoru ili `None`."""
     if space is None or user is None:
         return None
     return (
@@ -577,6 +616,7 @@ def latest_collaboration_request(space, user):
 
 
 def create_collaboration_request(*, space, requester, message):
+    """Kreira zahtev za saradnju i vraća torku `(zahtev, nivo_poruke, poruka)`."""
     existing = latest_collaboration_request(space, requester)
     if existing is not None:
         if existing.status == CollaborationRequest.Status.PENDING:
@@ -599,6 +639,7 @@ def create_collaboration_request(*, space, requester, message):
 
 
 def serialize_request_state(request_record):
+    """Vraća stanje zahteva za saradnju serijalizovano za prikaz u interfejsu."""
     if request_record is None:
         return None
     status_classes = {
@@ -614,6 +655,7 @@ def serialize_request_state(request_record):
 
 
 def revoke_space_share_links(space):
+    """Deaktivira sve aktivne deljene linkove prostora i vraća njihov broj."""
     now = timezone.now()
     active_links = list(ShareLink.objects.filter(space=space, is_active=True))
     if not active_links:
@@ -631,11 +673,13 @@ def revoke_space_share_links(space):
 
 
 def set_flash_and_redirect(request, level, message, target):
+    """Postavlja flash poruku i vraća redirect odgovor ka ciljnoj adresi."""
     getattr(messages, level)(request, message)
     return redirect(append_request_auth(target, request))
 
 
 def append_request_auth(target, request):
+    """Vraća URL dopunjen tokenom iz zahteva kada je aplikacija u extension režimu."""
     auth_token_value = get_current_auth_token_value(request)
     if not auth_token_value or not isinstance(target, str) or not target.startswith("/"):
         return target
@@ -648,10 +692,12 @@ def append_request_auth(target, request):
 
 
 def redirect_with_request_auth(request, target):
+    """Vraća redirect odgovor ka URL-u dopunjenom autentikacionim tokenom po potrebi."""
     return redirect(append_request_auth(target, request))
 
 
 def url_with_query(request, **updates):
+    """Vraća trenutni URL sa ažuriranim query parametrima."""
     query = request.GET.copy()
     if query.get("mock") not in {"login", "register"}:
         query.pop("mock", None)
@@ -665,6 +711,7 @@ def url_with_query(request, **updates):
 
 
 def filter_links(request, filters, query_key, active_filter):
+    """Vraća listu linkova za filtere sa informacijom koji filter je aktivan."""
     return [
         {
             "label": label,
@@ -676,6 +723,7 @@ def filter_links(request, filters, query_key, active_filter):
 
 
 def decorate_items(request, items):
+    """Vraća listu stavki obogaćenu URL-ovima za pregled pojedinačne stavke."""
     decorated = []
     for item in items:
         decorated.append(
@@ -688,6 +736,7 @@ def decorate_items(request, items):
 
 
 def decorate_item_for_request(request, item, *, can_delete=False, can_drag=False):
+    """Vraća serijalizovanu stavku obogaćenu URL-ovima i dozvolama za prikaz."""
     serialized = serialize_item(item)
     serialized["preview_url"] = url_with_query(request, preview=item.item_id)
     serialized["external_url"] = serialized.get("captured_url") or serialized.get("source_url")
@@ -699,6 +748,7 @@ def decorate_item_for_request(request, item, *, can_delete=False, can_drag=False
 
 
 def build_item_preview(request, items):
+    """Vraća podatke za modalni pregled izabrane stavke ili `None` kada pregled nije otvoren."""
     preview_id = request.GET.get("preview")
     if not preview_id or not items:
         return None
@@ -722,6 +772,7 @@ def build_item_preview(request, items):
 
 
 def build_action_modal(request, *, selected_space=None, items=None):
+    """Vraća konfiguraciju aktivnog modala akcije ili `None` kada modal nije otvoren."""
     dialog = request.GET.get("dialog")
     current_user = get_current_user(request)
     if dialog == "change-password" and current_user:
@@ -825,6 +876,7 @@ def build_action_modal(request, *, selected_space=None, items=None):
 
 
 def base_context(request, *, title, active_tab="home", selected_space=None):
+    """Vraća osnovni template kontekst zajednički za više stranica aplikacije."""
     mock_panel = request.GET.get("mock")
     current_user = get_current_user(request)
     auth_next_url = url_with_query(request, mock=None)
@@ -883,6 +935,7 @@ def base_context(request, *, title, active_tab="home", selected_space=None):
 
 
 def home(request):
+    """Prikazuje početnu stranicu sa prostorima korisnika i njegovim Inbox sadržajem."""
     current_user = get_current_user(request)
     active_space_filter = request.GET.get("space_filter", "All")
     active_item_filter = request.GET.get("item_filter", "All")
@@ -898,7 +951,7 @@ def home(request):
                 reverse("app:space_detail", args=[space.space_id]),
                 request,
             )
-            serialized_space["can_accept_drop"] = space.owner_id == current_user.user_id
+            serialized_space["can_accept_drop"] = can_add_items(space, current_user)
             space_dicts.append(serialized_space)
         universal_items = [
             decorate_item_for_request(
@@ -930,6 +983,7 @@ def home(request):
 
 
 def profile(request):
+    """Prikazuje profil prijavljenog korisnika i dostupne nalog akcije."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -940,6 +994,7 @@ def profile(request):
 
 
 def space_detail(request, space_id):
+    """Prikazuje detalje jednog prostora zajedno sa njegovim stavkama i članovima."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -999,6 +1054,7 @@ def space_detail(request, space_id):
 
 
 def login_action(request):
+    """Obrađuje prijavu preko web forme i vraća redirect na odgovarajuću stranicu."""
     if request.method != "POST":
         return redirect_with_request_auth(request, reverse("app:home"))
 
@@ -1021,6 +1077,7 @@ def login_action(request):
 
 
 def register_action(request):
+    """Obrađuje registraciju preko web forme i vraća redirect nakon uspeha ili greške."""
     if request.method != "POST":
         return redirect_with_request_auth(request, reverse("app:home"))
 
@@ -1060,6 +1117,7 @@ def register_action(request):
 
 
 def logout_action(request):
+    """Odjavljuje korisnika, opoziva aktivne tokene i vraća redirect na početnu stranu."""
     if request.method != "POST":
         return redirect_with_request_auth(request, reverse("app:home"))
 
@@ -1074,6 +1132,7 @@ def logout_action(request):
 
 
 def connect_extension(request):
+    """Generiše i vraća token za Chrome ekstenziju, kao JSON ili redirect odgovor."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1100,6 +1159,7 @@ def connect_extension(request):
 
 
 def update_profile(request):
+    """Ažurira osnovne podatke profila i vraća redirect ka profilu korisnika."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1129,6 +1189,7 @@ def update_profile(request):
 
 
 def change_password(request):
+    """Menja lozinku prijavljenog korisnika i vraća redirect sa status porukom."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1162,6 +1223,7 @@ def change_password(request):
 
 
 def api_register(request):
+    """Kreira korisnika preko API-ja i vraća JSON sa korisnikom i novim tokenom."""
     if request.method != "POST":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1207,6 +1269,7 @@ def api_register(request):
 
 
 def api_login(request):
+    """Prijavljuje korisnika preko API-ja i vraća JSON sa korisnikom i tokenom."""
     if request.method != "POST":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1237,6 +1300,7 @@ def api_login(request):
 
 
 def api_logout(request):
+    """Odjavljuje korisnika preko API-ja i vraća prazan JSON odgovor sa statusom 204."""
     if request.method != "POST":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1253,6 +1317,7 @@ def api_logout(request):
 
 
 def api_me(request):
+    """Vraća ili ažurira podatke tekućeg API korisnika i uzvraća JSON odgovor."""
     current_user, auth_token, error_response = require_api_token(request)
     if error_response:
         return error_response
@@ -1292,6 +1357,7 @@ def api_me(request):
 
 
 def api_change_password(request):
+    """Menja lozinku tekućeg API korisnika i vraća JSON status operacije."""
     if request.method != "POST":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1324,6 +1390,7 @@ def api_change_password(request):
 
 
 def api_spaces(request):
+    """Vraća listu prostora ili kreira novi prostor preko API-ja."""
     current_user, _auth_token, error_response = require_api_token(request)
     if error_response:
         return error_response
@@ -1360,6 +1427,7 @@ def api_spaces(request):
 
 
 def api_space_detail(request, space_id):
+    """Vraća, menja ili briše jedan prostor preko API-ja i uzvraća JSON odgovor."""
     current_user, _auth_token, error_response = require_api_token(request)
     if error_response:
         return error_response
@@ -1403,6 +1471,7 @@ def api_space_detail(request, space_id):
 
 
 def api_space_items(request, space_id):
+    """Vraća filtriranu listu stavki jednog prostora u JSON obliku."""
     current_user, _auth_token, error_response = require_api_token(request)
     if error_response:
         return error_response
@@ -1435,6 +1504,7 @@ def api_space_items(request, space_id):
 
 
 def api_space_share_link(request, space_id):
+    """Kreira ili opoziva deljeni link prostora preko API-ja i vraća JSON odgovor."""
     current_user, _auth_token, error_response = require_api_token(request)
     if error_response:
         return error_response
@@ -1481,6 +1551,7 @@ def api_space_share_link(request, space_id):
 
 
 def api_create_item(request):
+    """Kreira novu stavku preko API-ja i vraća serijalizovanu stavku u JSON formatu."""
     if request.method != "POST":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1519,6 +1590,7 @@ def api_create_item(request):
 
 
 def api_delete_item(request, item_id):
+    """Briše stavku preko API-ja i vraća prazan JSON odgovor sa statusom 204."""
     if request.method != "DELETE":
         return json_error("Method not allowed.", status=405, code="method_not_allowed")
 
@@ -1537,6 +1609,7 @@ def api_delete_item(request, item_id):
 
 
 def create_space(request):
+    """Kreira novi prostor preko web forme i vraća redirect ka njegovom prikazu."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1561,6 +1634,7 @@ def create_space(request):
 
 
 def update_space(request):
+    """Ažurira osnovne podatke prostora i vraća redirect na stranicu prostora."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1586,6 +1660,7 @@ def update_space(request):
 
 
 def create_item(request):
+    """Kreira novu stavku preko web forme i vraća JSON ili redirect odgovor."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1635,6 +1710,7 @@ def create_item(request):
 
 
 def delete_item(request):
+    """Briše stavku preko web forme i vraća JSON ili redirect odgovor."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1681,6 +1757,7 @@ def delete_item(request):
 
 
 def move_item(request):
+    """Premešta stavku između prostora i vraća JSON ili redirect odgovor."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1713,6 +1790,7 @@ def move_item(request):
 
 
 def invite_member(request):
+    """Dodaje ili ažurira člana prostora i vraća redirect sa flash porukom."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1787,6 +1865,7 @@ def invite_member(request):
 
 
 def remove_member(request):
+    """Uklanja aktivnog člana iz prostora i vraća redirect sa status porukom."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1822,6 +1901,7 @@ def remove_member(request):
 
 
 def review_request(request):
+    """Odobrava ili odbija zahtev za saradnju i vraća redirect sa rezultatom obrade."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1887,6 +1967,7 @@ def review_request(request):
 
 
 def create_share_link(request):
+    """Kreira ili ponovo koristi deljeni link prostora i vraća redirect ka Team modalu."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1917,6 +1998,7 @@ def create_share_link(request):
 
 
 def revoke_share_link(request):
+    """Opoziva aktivne deljene linkove prostora i vraća redirect sa porukom."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -1944,6 +2026,7 @@ def revoke_share_link(request):
 
 
 def share_link_access(request, token):
+    """Prikazuje stranicu za pristup prostoru preko deljenog linka ili vraća redirect."""
     share_link = ShareLink.objects.select_related("space", "created_by").filter(
         token=token,
         is_active=True,
@@ -1989,6 +2072,7 @@ def share_link_access(request, token):
 
 
 def join_shared_space(request, token):
+    """Dodaje prijavljenog korisnika kao viewer-a u deljeni prostor i vraća redirect."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -2044,6 +2128,7 @@ def join_shared_space(request, token):
 
 
 def request_shared_space_access(request, token):
+    """Kreira zahtev za collaborator pristup iz prikaza deljenog linka i vraća redirect."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -2069,6 +2154,7 @@ def request_shared_space_access(request, token):
 
 
 def request_space_collaboration(request, space_id):
+    """Kreira zahtev za collaborator ulogu iz samog prostora i vraća redirect odgovor."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response
@@ -2110,6 +2196,7 @@ def request_space_collaboration(request, space_id):
 
 
 def delete_space(request):
+    """Briše prostor vlasnika i vraća redirect na početnu stranicu."""
     current_user, redirect_response = require_current_user(request)
     if redirect_response:
         return redirect_response

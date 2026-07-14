@@ -1,3 +1,5 @@
+"""Pomoćne funkcije za pripremu konteksta i serijalizaciju podataka za prikaz."""
+
 # Author Petar Jovanovic
 from urllib.parse import urlparse
 
@@ -20,6 +22,7 @@ PASSWORD_RULES = [
 
 
 def get_demo_user():
+    """Vraća podrazumevanog demo korisnika kada nema aktivne prijave."""
     user = User.objects.filter(email="petar@example.com").first()
     if user:
         return user
@@ -27,6 +30,7 @@ def get_demo_user():
 
 
 def get_request_auth_token_value(request):
+    """Vraća vrednost autentikacionog tokena iz zahteva ako postoji."""
     cached = getattr(request, "_sidekick_extension_auth_token", None)
     if cached:
         return cached
@@ -50,6 +54,7 @@ def get_request_auth_token_value(request):
 
 
 def get_request_auth_token(request):
+    """Vraća objekat autentikacionog tokena povezan sa tekućim zahtevom."""
     cached = getattr(request, "_sidekick_extension_auth_token_object", None)
     if cached is not None:
         return cached
@@ -77,6 +82,7 @@ def get_request_auth_token(request):
 
 
 def get_current_auth_token_value(request):
+    """Vraća tekstualnu vrednost aktivnog tokena za tekući zahtev."""
     auth_token = get_request_auth_token(request)
     if auth_token is None:
         return ""
@@ -84,6 +90,7 @@ def get_current_auth_token_value(request):
 
 
 def get_current_user(request):
+    """Vraća trenutno prijavljenog korisnika na osnovu sesije ili tokena."""
     cached_user = getattr(request, "_sidekick_current_user", None)
     if cached_user is not None:
         return cached_user
@@ -105,22 +112,26 @@ def get_current_user(request):
 
 
 def share_link_is_available(share_link):
+    """Vraća informaciju da li je deljeni link aktivan i vremenski važeći."""
     return share_link is not None and share_link.is_active and (
         share_link.expires_at is None or share_link.expires_at > timezone.now()
     ) 
 
 
 def universal_space_marker(user):
+    """Vraća interni marker koji identifikuje korisnikov Inbox prostor."""
     return f"{UNIVERSAL_SPACE_PREFIX}:{user.user_id}"
 
 
 def is_universal_space(space):
+    """Vraća informaciju da li prosleđeni prostor predstavlja Inbox."""
     if space is None:
         return False
     return (space.description or "").startswith(UNIVERSAL_SPACE_PREFIX)
 
 
 def get_or_create_universal_space(user):
+    """Vraća korisnikov Inbox prostor ili ga kreira ako još ne postoji."""
     marker = universal_space_marker(user)
     space = ResearchSpace.objects.filter(owner=user, description=marker).first()
     if space is not None:
@@ -138,6 +149,7 @@ def get_or_create_universal_space(user):
 
 
 def membership_grants_access(membership):
+    """Vraća informaciju da li članstvo korisniku zaista daje pristup prostoru."""
     if membership.status != Membership.Status.ACTIVE:
         return False
     if membership.role == Membership.Role.VIEWER and membership.joined_via_id:
@@ -146,6 +158,7 @@ def membership_grants_access(membership):
 
 
 def filter_spaces(active_filter, current_user):
+    """Vraća listu prostora filtriranu po izabranom tab-u i korisniku."""
     spaces = ResearchSpace.objects.select_related("owner").prefetch_related("memberships__user", "memberships__joined_via")
     if current_user is None:
         return []
@@ -170,6 +183,7 @@ def filter_spaces(active_filter, current_user):
 
 
 def current_space_role(space, current_user):
+    """Vraća naziv uloge korisnika u prostoru ili oznaku pregleda."""
     if current_user is None:
         return "Preview"
     if space.owner_id == current_user.user_id:
@@ -189,6 +203,7 @@ def current_space_role(space, current_user):
 
 
 def serialize_space(space, current_user):
+    """Vraća rečnik sa podacima o prostoru spremnim za prikaz u interfejsu."""
     return {
         "id": space.space_id,
         "name": space.name,
@@ -199,6 +214,7 @@ def serialize_space(space, current_user):
 
 
 def filter_items(items, active_filter, active_user_filter="All"):
+    """Vraća listu stavki filtriranu po tipu sadržaja i autoru."""
     filtered_items = items
     if active_filter == "Images":
         filtered_items = [item for item in filtered_items if item["type"] == "image"]
@@ -214,10 +230,12 @@ def filter_items(items, active_filter, active_user_filter="All"):
 
 
 def item_user_filters(items):
+    """Vraća listu dostupnih filtera autora na osnovu prosleđenih stavki."""
     return ["All", *sorted({item["added_by"] for item in items})]
 
 
 def serialize_item(item):
+    """Vraća rečnik sa podacima o stavci spremnim za prikaz u interfejsu."""
     domain = ""
     if item.source_url or item.captured_url:
         domain = urlparse(item.source_url or item.captured_url).netloc
@@ -237,10 +255,12 @@ def serialize_item(item):
 
 
 def get_recent_items():
+    """Vraća skup nedavnih stavki za opšti prikaz; trenutno prazan queryset."""
     return Item.objects.none()
 
 
 def accessible_spaces(current_user):
+    """Vraća queryset prostora kojima korisnik ima dozvoljen pristup."""
     if current_user is None:
         return ResearchSpace.objects.none()
     all_spaces = (
@@ -257,6 +277,7 @@ def accessible_spaces(current_user):
 
 
 def get_recent_items_for_user(current_user):
+    """Vraća najskorije stavke koje su dostupne prosleđenom korisniku."""
     if current_user is None:
         return Item.objects.none()
     return (
@@ -267,6 +288,7 @@ def get_recent_items_for_user(current_user):
 
 
 def get_space(space_id, current_user=None):
+    """Vraća prostor po identifikatoru ako korisnik ima pravo pristupa."""
     space = (
         ResearchSpace.objects.select_related("owner")
         .prefetch_related("memberships__user", "memberships__joined_via")
@@ -283,6 +305,7 @@ def get_space(space_id, current_user=None):
 
 
 def get_space_items(space):
+    """Vraća queryset stavki koje pripadaju prosleđenom prostoru."""
     return (
         Item.objects.select_related("space", "added_by")
         .filter(space=space)
@@ -291,6 +314,7 @@ def get_space_items(space):
 
 
 def get_membership(space, user):
+    """Vraća aktivno članstvo korisnika u prostoru ili None ako ne postoji."""
     if user is None:
         return None
     return next(
@@ -305,6 +329,7 @@ def get_membership(space, user):
 
 
 def get_space_collaborators(space):
+    """Vraća listu saradnika prostora sa podacima za prikaz u Team modalu."""
     collaborators = [
         {
             "id": space.owner.user_id,
@@ -337,6 +362,7 @@ def get_space_collaborators(space):
 
 
 def get_collaboration_requests(space=None, current_user=None):
+    """Vraća listu zahteva za saradnju prilagođenu prostoru i korisniku."""
     requests = CollaborationRequest.objects.select_related("requester", "space")
     if space is not None:
         requests = requests.filter(space=space)
@@ -362,10 +388,12 @@ def get_collaboration_requests(space=None, current_user=None):
 
 
 def get_profile_user(request):
+    """Vraća korisnika za profil stranicu ili demo korisnika kada nema sesije."""
     return get_current_user(request) or get_demo_user()
 
 
 def get_user_profile_summary(current_user):
+    """Vraća zbirne podatke o profilnom nalogu i njegovim stavkama."""
     if current_user is None:
         return {
             "owned_spaces": 0,

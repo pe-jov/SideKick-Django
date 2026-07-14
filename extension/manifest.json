@@ -15,8 +15,18 @@
   "background": {
     "service_worker": "background.js"
   },
+  "icons": {
+    "16": "favicon.svg",
+    "32": "favicon.svg",
+    "48": "favicon.svg",
+    "128": "favicon.svg"
+  },
   "action": {
-    "default_title": "Open SideKick"
+    "default_title": "Open SideKick",
+    "default_icon": {
+      "16": "favicon.svg",
+      "32": "favicon.svg"
+    }
   },
   "commands": {
     "_execute_action": {
