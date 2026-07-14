@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """ASGI ulazna tačka za pokretanje SideKick Django aplikacije."""
 
-# Author Petar Jovanovic
 import os
 
 from django.conf import settings
@@ -19,3 +19,4 @@ from app.realtime import sio
 
 
 application = socketio.ASGIApp(sio, django_asgi_app)
+

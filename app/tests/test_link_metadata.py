@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Testovi za izvlačenje naslova linkova i kreiranje link stavki."""
 
 from unittest.mock import patch
@@ -92,3 +93,4 @@ class LinkMetadataTests(TestCase):
             title,
             "Incident U Avionu Rajanera U Kom Je Povreden Drzavljanin Srbije",
         )
+

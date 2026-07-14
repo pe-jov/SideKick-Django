@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """Administratorske konfiguracije za prikaz modela u Django admin panelu."""
 
-# Author Petar Jovanovic
 from django.contrib import admin
 
 from .models import AuthToken, CollaborationRequest, Item, Membership, ResearchSpace, ShareLink, User
@@ -62,3 +62,4 @@ class ShareLinkAdmin(admin.ModelAdmin):
 
     list_display = ("share_link_id", "space", "created_by", "token", "is_active")
     list_filter = ("is_active",)
+

@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Pomocne strukture i funkcije za ponovno popunjavanje demo podataka aplikacije."""
 
 from __future__ import annotations
@@ -923,3 +924,4 @@ def rebuild_demo_data(*, base_dir: Path) -> dict[str, list[str]]:
 
     credentials = [f"{seed.email} / {DEFAULT_PASSWORD}" for seed in USERS[:4]]
     return {"credentials": credentials}
+

@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """Kontroleri i pomoćne funkcije za prikaz, autentikaciju i API sloj aplikacije SideKick."""
 
-# Author Petar Jovanovic
 import json
 import re
 import secrets
@@ -2232,3 +2232,4 @@ def delete_space(request):
 
     space.delete()
     return redirect_with_request_auth(request, reverse("app:home"))
+

@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Komanda za ponovno generisanje demo podataka za lokalni razvoj."""
 
 from pathlib import Path
@@ -22,3 +23,4 @@ class Command(BaseCommand):
         self.stdout.write("Test accounts:")
         for credential in result["credentials"]:
             self.stdout.write(f"  - {credential}")
+

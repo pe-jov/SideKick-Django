@@ -1,3 +1,4 @@
+# Autor: Luka Jankovic, 704/19
 """Middleware sloj za prilagođavanje bezbednosnog ponašanja ekstenzije."""
 
 from .context import get_request_auth_token
@@ -28,3 +29,4 @@ class ExtensionCsrfBypassMiddleware:
                     request._dont_enforce_csrf_checks = True
 
         return self.get_response(request)
+

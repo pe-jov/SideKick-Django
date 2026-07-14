@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 # Generated manually for prototype seed data.
 from datetime import datetime, timedelta, timezone
 
@@ -387,3 +388,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(seed_data, unseed_data),
     ]
+

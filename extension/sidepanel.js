@@ -1,3 +1,4 @@
+// Autor: Milan Neskovic, 545/19
 const STORAGE_KEY = "sidekick-extension-session";
 const DEFAULT_BASE_URL = "http://127.0.0.1:8000";
 
@@ -223,3 +224,4 @@ chrome.runtime.onMessage.addListener((message) => {
 void (async () => {
   await bootstrapPanel();
 })();
+

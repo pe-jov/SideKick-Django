@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Author Petar Jovanovic
+# Autor: Luka Jankovic, 704/19
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
@@ -18,3 +18,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

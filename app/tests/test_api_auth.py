@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Testovi za API autentikaciju i osnovne zaštićene tokove aplikacije."""
 
 import json
@@ -157,3 +158,4 @@ class ApiAuthTests(TestCase):
 
         self.assertEqual(delete_response.status_code, 204)
         self.assertFalse(Item.objects.filter(item_id=item_id).exists())
+

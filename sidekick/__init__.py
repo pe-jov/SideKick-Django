@@ -1,2 +1,3 @@
-# Author Petar Jovanovic
+# Autor: Luka Jankovic, 704/19
+
 

@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """Osnovna Django podešavanja za lokalno razvojno okruženje aplikacije SideKick."""
 
-# Author Petar Jovanovic
 from pathlib import Path
 
 
@@ -70,3 +70,4 @@ MEDIA_ROOT = BASE_DIR / "media"
 X_FRAME_OPTIONS = "ALLOWALL"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+

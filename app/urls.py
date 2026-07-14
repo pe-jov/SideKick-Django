@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """URL konfiguracija aplikacije SideKick."""
 
-# Author Petar Jovanovic
 from django.urls import path
 
 from . import views
@@ -46,3 +46,4 @@ urlpatterns = [
     path("profile/", views.profile, name="profile"),
     path("spaces/<int:space_id>/", views.space_detail, name="space_detail"),
 ]
+

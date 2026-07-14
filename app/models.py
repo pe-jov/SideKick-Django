@@ -1,6 +1,6 @@
+# Autor: Milan Neskovic, 545/19
 """Modeli baze podataka za aplikaciju SideKick."""
 
-# Author Petar Jovanovic
 from urllib.parse import urlparse
 
 from django.db import models
@@ -287,3 +287,4 @@ class ShareLink(models.Model):
     def is_available(self):
         """Vraća informaciju da li je deljeni link trenutno aktivan i neistekao."""
         return self.is_active and (self.expires_at is None or self.expires_at > timezone.now())
+

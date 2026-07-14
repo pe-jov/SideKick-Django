@@ -1,6 +1,6 @@
+# Autor: Milan Neskovic, 545/19
 """Socket.IO helpers for real-time item updates."""
 
-# Author Petar Jovanovic
 from http.cookies import SimpleCookie
 from importlib import import_module
 import logging
@@ -230,3 +230,4 @@ async def join_space(sid, data):
     session["space_id"] = space_id
     await sio.save_session(sid, session)
     return {"ok": True, "spaceId": space_id}
+

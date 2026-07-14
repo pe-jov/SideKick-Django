@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """Pomoćne funkcije za pripremu konteksta i serijalizaciju podataka za prikaz."""
 
-# Author Petar Jovanovic
 from urllib.parse import urlparse
 
 from django.utils import timezone
@@ -422,3 +422,4 @@ def get_user_profile_summary(current_user):
         "saved_items": saved_items,
         "recent_items": recent_items,
     }
+

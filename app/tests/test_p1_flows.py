@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Testovi za P1 tokove: profil, saradnja, deljenje i dozvole pristupa."""
 
 import json
@@ -431,3 +432,4 @@ class P1FlowTests(TestCase):
         self.assertEqual(response.status_code, 200)
         item.refresh_from_db()
         self.assertEqual(item.space_id, self.space.space_id)
+

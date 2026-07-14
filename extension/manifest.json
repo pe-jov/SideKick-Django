@@ -1,4 +1,5 @@
 {
+  "_author": "Milan Neskovic, 545/19",
   "manifest_version": 3,
   "name": "SideKick",
   "description": "Open the SideKick research workspace in Chrome side panel.",

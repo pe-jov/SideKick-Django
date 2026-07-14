@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 # Generated manually to refresh seeded sample media with more realistic imagery.
 from django.db import migrations
 
@@ -32,3 +33,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(refresh_sample_media, migrations.RunPython.noop),
     ]
+

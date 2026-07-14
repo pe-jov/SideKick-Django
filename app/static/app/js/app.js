@@ -1,4 +1,4 @@
-// Author Petar Jovanovic
+// Autor: Petar Jovanovic, 276/20
 const root = document.documentElement;
 const mainContent = document.querySelector(".main-content");
 const messageStack = document.querySelector(".message-stack");
@@ -1859,3 +1859,4 @@ if (realtimeSpaceScope && typeof window.io === "function") {
     });
   }
 }
+

@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 from django.db import migrations, models
 
 
@@ -14,3 +15,4 @@ class Migration(migrations.Migration):
             field=models.CharField(blank=True, db_column="avatarPath", max_length=500),
         ),
     ]
+

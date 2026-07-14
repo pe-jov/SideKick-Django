@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Testovi za realtime pristup i izbor primalaca Socket.IO događaja."""
 
 from django.contrib.auth.hashers import make_password
@@ -104,3 +105,4 @@ class RealtimeRecipientTests(TestCase):
             recipients,
             sorted([self.owner.user_id, self.collaborator.user_id]),
         )
+

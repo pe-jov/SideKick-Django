@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 """Testovi za opoziv deljenih linkova i posledice po viewer pristup."""
 
 import json
@@ -147,3 +148,4 @@ class ShareLinkRevokeTests(TestCase):
 
         share_page_response = self.client.get(reverse("app:share_link_access", args=[self.share_link.token]))
         self.assertEqual(share_page_response.status_code, 404)
+

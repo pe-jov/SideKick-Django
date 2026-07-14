@@ -1,6 +1,6 @@
+# Autor: Luka Jankovic, 704/19
 """Konfiguracija Django aplikacije SideKick."""
 
-# Author Petar Jovanovic
 from django.apps import AppConfig
 
 
@@ -9,3 +9,4 @@ class SidekickAppConfig(AppConfig):
 
     default_auto_field = "django.db.models.BigAutoField"
     name = "app"
+

@@ -1,3 +1,4 @@
+// Autor: Milan Neskovic, 545/19
 const STORAGE_KEY = "sidekick-extension-session";
 const UI_STATE_KEYS = ["modal", "dialog", "preview", "mock", "authToken"];
 
@@ -84,3 +85,4 @@ window.addEventListener("pageshow", () => {
 window.addEventListener("popstate", () => {
   void syncExtensionRoute();
 });
+

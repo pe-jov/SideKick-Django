@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 # Generated manually for share-link-backed viewer access.
 from django.db import migrations, models
 import django.db.models.deletion
@@ -22,3 +23,4 @@ class Migration(migrations.Migration):
             ),
         ),
     ]
+

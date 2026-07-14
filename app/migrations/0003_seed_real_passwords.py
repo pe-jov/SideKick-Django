@@ -1,3 +1,4 @@
+# Autor: Milan Neskovic, 545/19
 # Generated manually to make seeded prototype users usable for login.
 from django.contrib.auth.hashers import make_password
 from django.db import migrations
@@ -26,3 +27,4 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunPython(set_seed_passwords, migrations.RunPython.noop),
     ]
+

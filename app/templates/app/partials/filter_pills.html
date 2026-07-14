@@ -1,4 +1,4 @@
-<!-- Author Petar Jovanovic -->
+<!-- Autor: Petar Jovanovic, 276/20 -->
 <div class="filter-row {% if row_class %}{{ row_class }}{% endif %}" {% if filter_key %}data-filter-key="{{ filter_key }}"{% endif %}>
   {% if filter_title %}
     <span class="filter-label">{{ filter_title }}</span>
@@ -7,3 +7,4 @@
     <button class="pill {% if filter.is_active %}active{% endif %}" type="button" data-filter-value="{{ filter.label }}">{{ filter.label }}</button>
   {% endfor %}
 </div>
+
