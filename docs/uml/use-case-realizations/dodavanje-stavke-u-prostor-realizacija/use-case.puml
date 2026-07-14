@@ -5,12 +5,42 @@ skinparam packageStyle rectangle
 
 actor "Vlasnik prostora" as Owner
 actor "Kolaborator" as Collaborator
+actor "Viewer" as Viewer
 
-rectangle "Dodavanje stavke u prostor" {
-  usecase "Dodavanje stavke u prostor" as UC_AddItem
+rectangle "SideKick" {
+  usecase "Dodavanje tekstualne stavke" as UC_AddText
+  usecase "Dodavanje link stavke" as UC_AddLink
+  usecase "Dodavanje slike" as UC_AddImage
+  usecase "Cuvanje stavke u Inbox" as UC_SaveToInbox
+  usecase "Cuvanje stavke u prostor" as UC_SaveToSpace
+  usecase "Preuzimanje naslova linka iz metapodataka" as UC_ReadLinkMeta
+  usecase "Pregled stavke" as UC_ViewItem
+  usecase "Brisanje bilo koje stavke u prostoru" as UC_DeleteAnyItem
+  usecase "Brisanje sopstvene stavke" as UC_DeleteOwnItem
+  usecase "Premestanje stavke iz Inbox-a u prostor" as UC_MoveInboxItem
+  usecase "Premestanje sopstvene stavke iz jednog prostora u drugi" as UC_MoveOwnItem
 }
 
-Owner --> UC_AddItem
-Collaborator --> UC_AddItem
+Owner --> UC_AddText
+Owner --> UC_AddLink
+Owner --> UC_AddImage
+Owner --> UC_SaveToInbox
+Owner --> UC_SaveToSpace
+Owner --> UC_ViewItem
+Owner --> UC_DeleteAnyItem
+Owner --> UC_MoveInboxItem
+Owner --> UC_MoveOwnItem
+
+Collaborator --> UC_AddText
+Collaborator --> UC_AddLink
+Collaborator --> UC_AddImage
+Collaborator --> UC_SaveToSpace
+Collaborator --> UC_ViewItem
+Collaborator --> UC_DeleteOwnItem
+Collaborator --> UC_MoveOwnItem
+
+Viewer --> UC_ViewItem
+
+UC_AddLink .> UC_ReadLinkMeta : <<include>>
 
 @enduml

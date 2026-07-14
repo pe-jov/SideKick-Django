@@ -4,13 +4,40 @@ left to right direction
 skinparam packageStyle rectangle
 
 actor "Registrovani korisnik" as User
+actor "Vlasnik prostora" as Owner
+actor "Kolaborator" as Collaborator
+actor "Viewer" as Viewer
 actor "Chrome ekstenzija" as Extension
 
-rectangle "Povezivanje Chrome ekstenzije sa nalogom" {
-  usecase "Povezivanje Chrome ekstenzije sa nalogom" as UC_ConnectExtension
+User <|-- Owner
+User <|-- Collaborator
+User <|-- Viewer
+
+rectangle "SideKick" {
+  usecase "Otvaranje SideKick side panel-a" as UC_OpenSidePanel
+  usecase "Povezivanje ekstenzije sa nalogom" as UC_ConnectExtension
+  usecase "Pregled aplikacije u side panel-u" as UC_ViewInPanel
+  usecase "Otvaranje web aplikacije iz ekstenzije" as UC_OpenWebFromExtension
+  usecase "Prekid veze ekstenzije sa nalogom" as UC_DisconnectExtension
+  usecase "Pamcenje poslednje rute u ekstenziji" as UC_RememberRoute
+  usecase "Automatsko azuriranje prikaza stavki u realnom vremenu" as UC_LiveUpdates
 }
 
+User --> UC_OpenSidePanel
 User --> UC_ConnectExtension
-Extension --> UC_ConnectExtension
+User --> UC_ViewInPanel
+User --> UC_OpenWebFromExtension
+User --> UC_DisconnectExtension
+
+Extension --> UC_OpenSidePanel
+Extension --> UC_ViewInPanel
+Extension --> UC_OpenWebFromExtension
+Extension --> UC_RememberRoute
+
+Owner --> UC_LiveUpdates
+Collaborator --> UC_LiveUpdates
+Viewer --> UC_LiveUpdates
+
+UC_ViewInPanel .> UC_RememberRoute : <<include>>
 
 @enduml
