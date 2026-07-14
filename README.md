@@ -8,16 +8,16 @@ Instaliraj zavisnosti:
 pip install -r requirements.txt
 ```
 
-Pokreni Django server:
+Pokreni ASGI server:
 
 ```bash
-python manage.py runserver
+python -m uvicorn sidekick.asgi:application --host 127.0.0.1 --port 8000
 ```
 
 Ako koristiš Windows Python launcher:
 
 ```bash
-py manage.py runserver
+py -m uvicorn sidekick.asgi:application --host 127.0.0.1 --port 8000
 ```
 
 Otvori aplikaciju u browseru:

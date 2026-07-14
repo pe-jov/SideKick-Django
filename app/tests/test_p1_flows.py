@@ -104,6 +104,13 @@ class P1FlowTests(TestCase):
         session["sidekick_user_id"] = user.user_id
         session.save()
 
+    def login_web_session_with_token(self, user, token_value):
+        """Postavlja standardnu web sesiju sa korisnikom i session tokenom."""
+        session = self.client.session
+        session["sidekick_user_id"] = user.user_id
+        session["sidekick_auth_token"] = token_value
+        session.save()
+
     def test_api_me_patch_updates_profile_and_keeps_unique_email(self):
         response = self.client.patch(
             reverse("app:api_me"),
@@ -147,6 +154,24 @@ class P1FlowTests(TestCase):
         )
         self.assertEqual(old_login.status_code, 401)
         self.assertEqual(new_login.status_code, 200)
+
+    def test_profile_keeps_connect_extension_for_regular_web_session(self):
+        self.login_web_session_with_token(self.owner, self.owner_token.token_value)
+
+        response = self.client.get(reverse("app:profile"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Connect extension")
+        self.assertNotContains(response, "?authToken=")
+        self.assertNotContains(response, 'data-auth-token="p1-owner-token"')
+
+    def test_home_boots_inbox_realtime(self):
+        self.login_web_session_with_token(self.owner, self.owner_token.token_value)
+
+        response = self.client.get(reverse("app:home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "data-realtime-space-id")
 
     def test_owner_can_edit_space_via_api(self):
         response = self.client.patch(

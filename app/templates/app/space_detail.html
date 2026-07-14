@@ -43,7 +43,13 @@
       </div>
     </div>
 
-    <section class="section animate-in slow" data-filter-scope="space-items">
+    <section
+      class="section animate-in slow"
+      data-filter-scope="space-items"
+      data-realtime-space-id="{{ space.id }}"
+      data-realtime-space-role="{{ space.role|lower }}"
+      data-realtime-user-id="{{ current_user.user_id }}"
+    >
     {% if can_add_item %}
       <form class="sr-only" data-space-upload-form>
         {% csrf_token %}

@@ -19,15 +19,36 @@ const spaceDropTargets = [...document.querySelectorAll(".space-card[data-drop-sp
 const spaceCards = [...document.querySelectorAll(".space-card")];
 const appShell = document.querySelector(".app-shell");
 const connectExtensionForm = document.querySelector("[data-connect-extension-form]");
+const realtimeSpaceScope = document.querySelector("[data-realtime-space-id]");
 let clientPreviewOverlay = null;
 
-const getExtensionAuthToken = () => (
-  document.body?.dataset.authToken
-  || root.dataset.authToken
-  || new URL(window.location.href).searchParams.get("authToken")
-  || ""
+// Space cards stay click-only so the inbox move flow never treats them as draggable content.
+spaceCards.forEach((card) => {
+  card.draggable = false;
+  card.addEventListener("dragstart", (event) => {
+    event.preventDefault();
+  });
+});
+
+// Extension auth should only propagate when the page is actually rendered in extension mode.
+const isExtensionMode = () => (
+  document.body?.dataset.extensionMode === "true"
+  || root.dataset.extensionMode === "true"
 );
 
+// Read the extension token from server-rendered data first and fall back to the URL only in extension mode.
+const getExtensionAuthToken = () => (
+  isExtensionMode()
+    ? (
+      document.body?.dataset.authToken
+      || root.dataset.authToken
+      || new URL(window.location.href).searchParams.get("authToken")
+      || ""
+    )
+    : ""
+);
+
+// Keep internal navigation extension-aware without touching normal web navigation.
 const appendExtensionAuth = (value) => {
   const authToken = getExtensionAuthToken();
   if (!authToken || !value) return value;
@@ -42,6 +63,7 @@ const appendExtensionAuth = (value) => {
   }
 };
 
+// Normalize links after render so extension pages preserve their auth token across in-app navigation.
 const normalizeInternalAnchors = (scope = document) => {
   if (!getExtensionAuthToken()) return;
   scope.querySelectorAll("a[href]").forEach((anchor) => {
@@ -51,6 +73,7 @@ const normalizeInternalAnchors = (scope = document) => {
   });
 };
 
+// POST forms need the same token propagation path when they are submitted from the extension shell.
 const ensureAuthField = (form) => {
   const authToken = getExtensionAuthToken();
   if (!authToken || !form) return;
@@ -65,6 +88,7 @@ const ensureAuthField = (form) => {
   field.value = authToken;
 };
 
+// AJAX requests reuse the same token contract as form submissions.
 const appendAuthToFormData = (formData) => {
   const authToken = getExtensionAuthToken();
   if (!authToken) return formData;
@@ -445,6 +469,155 @@ const reconcileItemCollectionState = (scope) => {
   syncVisibleSpaceItemCount();
 };
 
+const normalizeRealtimeItem = (item) => {
+  if (!item) return null;
+  return {
+    id: item.id,
+    type: item.type,
+    src: item.src || item.imagePath || "",
+    content: item.content || "",
+    title: item.title || "",
+    domain: item.domain || "",
+    sourceUrl: item.sourceUrl || "",
+    capturedUrl: item.capturedUrl || "",
+    externalUrl: item.externalUrl || item.capturedUrl || item.sourceUrl || "",
+    pageTitle: item.pageTitle || "",
+    addedBy: item.addedBy || item.addedByName || "",
+    addedById: item.addedById || "",
+  };
+};
+
+const canDeleteRealtimeItem = (item) => {
+  if (!realtimeSpaceScope || !item) return false;
+
+  const role = String(realtimeSpaceScope.dataset.realtimeSpaceRole || "").toLowerCase();
+  if (role === "owner") return true;
+
+  const currentUserId = String(realtimeSpaceScope.dataset.realtimeUserId || "");
+  return role === "collaborator" && currentUserId && currentUserId === String(item.addedById || "");
+};
+
+const ensureRealtimeItemTarget = () => {
+  if (!realtimeSpaceScope) return null;
+
+  let target = realtimeSpaceScope.querySelector("[data-filter-target='items']");
+  if (target) return target;
+
+  target = document.createElement("div");
+  target.className = "item-masonry";
+  target.dataset.filterTarget = "items";
+  realtimeSpaceScope.appendChild(target);
+  return target;
+};
+
+const buildRealtimeItemCard = (rawItem) => {
+  const item = normalizeRealtimeItem(rawItem);
+  if (!item?.id) return null;
+
+  const article = document.createElement("article");
+  article.className = "item-card";
+  article.dataset.type = item.type || "text";
+  article.dataset.itemId = String(item.id);
+  if (item.src) article.dataset.src = item.src;
+  if (item.content) article.dataset.content = item.content;
+  if (item.title) article.dataset.title = item.title;
+  if (item.domain) article.dataset.domain = item.domain;
+  if (item.pageTitle) article.dataset.pageTitle = item.pageTitle;
+  if (item.addedBy) article.dataset.addedBy = item.addedBy;
+  if (item.addedById) article.dataset.addedById = String(item.addedById);
+  if (item.externalUrl) article.dataset.externalUrl = item.externalUrl;
+  if (canDeleteRealtimeItem(item)) {
+    article.dataset.deleteUrl = appendExtensionAuth(`?dialog=delete-item&item=${encodeURIComponent(String(item.id))}`);
+  }
+  article.tabIndex = 0;
+
+  if (item.type === "image" && item.src) {
+    const image = document.createElement("img");
+    image.className = "item-image";
+    image.src = item.src;
+    image.alt = "Saved item";
+    image.referrerPolicy = "no-referrer";
+    image.draggable = false;
+    article.appendChild(image);
+    return article;
+  }
+
+  if (item.type === "link") {
+    const wrapper = document.createElement("div");
+    wrapper.className = "item-content square-card item-content--link";
+    wrapper.draggable = false;
+
+    const topline = document.createElement("div");
+    topline.className = "item-link-topline";
+    if (item.externalUrl) {
+      const favicon = document.createElement("img");
+      favicon.className = "item-link-favicon";
+      favicon.src = `https://www.google.com/s2/favicons?sz=128&domain_url=${encodeURIComponent(item.externalUrl)}`;
+      favicon.alt = "";
+      favicon.referrerPolicy = "no-referrer";
+      topline.appendChild(favicon);
+    } else {
+      const label = document.createElement("span");
+      label.className = "small-icon";
+      label.textContent = "Link";
+      topline.appendChild(label);
+    }
+
+    const copy = document.createElement("div");
+    copy.className = "item-link-copy";
+
+    const title = document.createElement("h3");
+    title.className = "item-title";
+    title.textContent = item.title || item.pageTitle || "Saved link";
+
+    const domain = document.createElement("p");
+    domain.className = "muted item-domain";
+    domain.textContent = item.domain || "";
+
+    copy.append(title, domain);
+    wrapper.append(topline, copy);
+    article.appendChild(wrapper);
+    article.style.setProperty("--item-accent", colorFromDomain(item.domain || item.externalUrl || item.title));
+    return article;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "item-content square-card item-content--text";
+  wrapper.draggable = false;
+
+  const text = document.createElement("p");
+  text.className = "item-text";
+  text.textContent = item.content || "";
+
+  wrapper.appendChild(text);
+  article.appendChild(wrapper);
+  return article;
+};
+
+const prependRealtimeItem = (rawItem) => {
+  const item = normalizeRealtimeItem(rawItem);
+  if (!item?.id || !realtimeSpaceScope) return;
+
+  const existingCard = document.querySelector(`.item-card[data-item-id='${String(item.id)}']`);
+  if (existingCard) return;
+
+  const target = ensureRealtimeItemTarget();
+  if (!target) return;
+
+  const card = buildRealtimeItemCard(item);
+  if (!card) return;
+
+  target.prepend(card);
+  reconcileItemCollectionState(realtimeSpaceScope);
+};
+
+const removeRealtimeItemCard = (itemId) => {
+  if (!realtimeSpaceScope || !itemId) return;
+
+  realtimeSpaceScope.querySelectorAll(`.item-card[data-item-id='${String(itemId)}']`).forEach((card) => card.remove());
+  reconcileItemCollectionState(realtimeSpaceScope);
+};
+
 const waitForExtensionBridgeAck = (timeoutMs = 1800) => new Promise((resolve) => {
   let settled = false;
   const timer = window.setTimeout(() => {
@@ -821,6 +994,17 @@ if (dropZone && spaceCaptureSurface) {
       if (!response.ok) {
         return false;
       }
+      const payload = await response.json().catch(() => null);
+      if (
+        realtimeSpaceScope
+        && String(realtimeSpaceScope.dataset.realtimeSpaceId || "") === String(directUploadSpaceId)
+      ) {
+        if (payload?.item) {
+          prependRealtimeItem(payload.item);
+        }
+        showInlineMessage("Item saved.", "success");
+        return true;
+      }
       const activeItemFilter = new URL(window.location.href).searchParams.get("item_filter") || "All";
       const typeFilterMap = {
         image: "Images",
@@ -1196,7 +1380,7 @@ if (draggableItemCards.length > 0 && spaceDropTargets.length > 0 && spaceUploadF
     clearDragState();
 
     if (invalidTarget) {
-      showInlineMessage("Inbox items can only be moved into spaces you own.", "info");
+      showInlineMessage("You cannot move inbox items into spaces where you only have viewer access. Only owners or collaborators can add items.", "info");
       return;
     }
     if (invalidTarget) return;
@@ -1566,4 +1750,112 @@ if (itemContextMenu && itemContextAction && (itemCardsWithMenu.length > 0 || mem
 
   window.addEventListener("scroll", hideItemContextMenu, true);
   window.addEventListener("resize", hideItemContextMenu);
+}
+
+const openDynamicItemPreview = (card) => {
+  if (!card) return;
+  if (card.dataset.type === "link" && card.dataset.externalUrl) {
+    window.open(card.dataset.externalUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+  openClientPreview(card);
+};
+
+document.addEventListener("click", (event) => {
+  const card = event.target.closest(".item-card[data-item-id]");
+  if (!card || previewableItemCards.includes(card)) return;
+  if (event.defaultPrevented) return;
+  if (event.target.closest("a, button, input, textarea, select")) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  openDynamicItemPreview(card);
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+
+  const card = event.target.closest(".item-card[data-item-id]");
+  if (!card || previewableItemCards.includes(card)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  openDynamicItemPreview(card);
+});
+
+document.addEventListener("contextmenu", (event) => {
+  if (!itemContextMenu || !itemContextAction) return;
+
+  const card = event.target.closest(".item-card[data-item-id]");
+  if (!card || itemCardsWithMenu.includes(card)) return;
+
+  const deleteUrl = card.dataset.deleteUrl;
+  if (!deleteUrl) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  itemContextAction.href = deleteUrl;
+  itemContextAction.textContent = "Delete item";
+  itemContextMenu.hidden = false;
+
+  const menuWidth = 168;
+  const menuHeight = 52;
+  const x = Math.min(event.clientX, window.innerWidth - menuWidth - 12);
+  const y = Math.min(event.clientY, window.innerHeight - menuHeight - 12);
+
+  itemContextMenu.style.left = `${Math.max(12, x)}px`;
+  itemContextMenu.style.top = `${Math.max(12, y)}px`;
+});
+
+// Realtime subscriptions run for the active live-updated collection and share the same behavior across views.
+if (realtimeSpaceScope && typeof window.io === "function") {
+  const realtimeSpaceId = Number(realtimeSpaceScope.dataset.realtimeSpaceId || 0);
+  if (realtimeSpaceId) {
+    let realtimeWarningShown = false;
+    const authToken = getExtensionAuthToken();
+    const socket = window.io({
+      auth: authToken ? { authToken } : undefined,
+    });
+
+    const showRealtimeWarning = (message = "Live updates are temporarily unavailable.") => {
+      if (realtimeWarningShown) return;
+      realtimeWarningShown = true;
+      showInlineMessage(message, "info");
+    };
+
+    const joinRealtimeSpace = () => {
+      socket.timeout(5000).emit("space:join", { spaceId: realtimeSpaceId }, (error, response) => {
+        if (error || !response?.ok) {
+          showRealtimeWarning("Live updates could not join this space.");
+        }
+      });
+    };
+
+    socket.on("connect", () => {
+      realtimeWarningShown = false;
+      joinRealtimeSpace();
+    });
+
+    socket.on("connect_error", () => {
+      showRealtimeWarning();
+    });
+
+    socket.on("error", () => {
+      showRealtimeWarning();
+    });
+
+    socket.on("space:item_created", (payload) => {
+      if (Number(payload?.spaceId || 0) !== realtimeSpaceId) return;
+      prependRealtimeItem(payload?.item);
+    });
+
+    socket.on("space:item_removed", (payload) => {
+      if (Number(payload?.spaceId || 0) !== realtimeSpaceId) return;
+      removeRealtimeItemCard(payload?.itemId);
+    });
+
+    window.addEventListener("beforeunload", () => {
+      socket.disconnect();
+    });
+  }
 }

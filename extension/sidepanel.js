@@ -48,13 +48,14 @@ const clearSession = async () => {
 
 const setFeedback = (_message = "") => {};
 
-const setConnectionState = (connected) => {
-  document.body.classList.toggle("extension-connected", connected);
-  document.body.classList.toggle("extension-disconnected", !connected);
+// Keep the panel in a neutral boot state until we know whether a saved extension session exists.
+const setConnectionState = (state) => {
+  document.body.classList.remove("extension-booting", "extension-connected", "extension-disconnected");
+  document.body.classList.add(`extension-${state}`);
 };
 
 const renderLoggedOut = () => {
-  setConnectionState(false);
+  setConnectionState("disconnected");
   openWebButton.hidden = true;
   logoutButton.hidden = true;
   appFrame.removeAttribute("src");
@@ -67,7 +68,7 @@ const renderLoggedIn = () => {
     renderLoggedOut();
     return;
   }
-  setConnectionState(true);
+  setConnectionState("connected");
   openWebButton.hidden = false;
   logoutButton.hidden = false;
   const nextSrc = withAuthToken(sessionState.baseUrl, sessionState.lastPath || "/");
@@ -121,6 +122,19 @@ const validateSession = async (baseUrlOverride = "") => {
   }
 };
 
+const bootstrapPanel = async () => {
+  setConnectionState("booting");
+  await loadStoredSession();
+
+  if (!sessionState?.token) {
+    renderLoggedOut();
+    return;
+  }
+
+  renderLoggedIn();
+  void validateSession();
+};
+
 openLoginTabButton.addEventListener("click", async () => {
   const baseUrl = normalizeBaseUrl(baseUrlInput.value);
   await chrome.tabs.create({ url: `${baseUrl}/` });
@@ -151,13 +165,29 @@ logoutButton.addEventListener("click", async () => {
 
 chrome.storage.onChanged.addListener(async (changes, areaName) => {
   if (areaName !== "local" || !changes[STORAGE_KEY]) return;
-  sessionState = changes[STORAGE_KEY].newValue || null;
-  if (sessionState?.token) {
-    setFeedback("");
-    await validateSession();
+  const nextState = changes[STORAGE_KEY].newValue || null;
+  const currentSerialized = JSON.stringify(sessionState || null);
+  const nextSerialized = JSON.stringify(nextState || null);
+  if (currentSerialized === nextSerialized) return;
+
+  const credentialsChanged = (
+    nextState?.token !== sessionState?.token
+    || normalizeBaseUrl(nextState?.baseUrl || "") !== normalizeBaseUrl(sessionState?.baseUrl || "")
+  );
+
+  sessionState = nextState;
+  baseUrlInput.value = normalizeBaseUrl(sessionState?.baseUrl || DEFAULT_BASE_URL);
+
+  if (!sessionState?.token) {
+    renderLoggedOut();
     return;
   }
-  renderLoggedOut();
+
+  setFeedback("");
+  renderLoggedIn();
+  if (credentialsChanged) {
+    await validateSession();
+  }
 });
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -190,21 +220,6 @@ chrome.runtime.onMessage.addListener((message) => {
     renderLoggedOut();
   }
 });
-
-appFrame.addEventListener("load", async () => {
-  if (!sessionState?.token) return;
-  window.setTimeout(async () => {
-    await loadStoredSession();
-    if (!sessionState?.token) {
-      renderLoggedOut();
-      return;
-    }
-    await validateSession();
-  }, 80);
-});
-
 void (async () => {
-  setConnectionState(false);
-  await loadStoredSession();
-  await validateSession();
+  await bootstrapPanel();
 })();

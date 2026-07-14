@@ -28,21 +28,23 @@ from .context import (
     filter_spaces,
     get_or_create_universal_space,
     get_collaboration_requests,
-    get_current_auth_token_value,
     get_current_user,
     get_membership,
     get_profile_user,
+    get_request_auth_token_value,
     get_recent_items_for_user,
     get_space_collaborators,
     get_space_items,
     get_space,
     get_user_profile_summary,
+    is_extension_request,
     is_universal_space,
     item_user_filters,
     serialize_item,
     serialize_space,
 )
 from .models import AuthToken, CollaborationRequest, Item, Membership, ResearchSpace, ShareLink, User
+from .realtime import emit_space_item_created, emit_space_item_moved, emit_space_item_removed
 
 
 PASSWORD_VALIDATORS = [
@@ -680,12 +682,16 @@ def set_flash_and_redirect(request, level, message, target):
 
 def append_request_auth(target, request):
     """Vraća URL dopunjen tokenom iz zahteva kada je aplikacija u extension režimu."""
-    auth_token_value = get_current_auth_token_value(request)
-    if not auth_token_value or not isinstance(target, str) or not target.startswith("/"):
+    if not is_extension_request(request) or not isinstance(target, str) or not target.startswith("/"):
+        return target
+
+    auth_token_value = get_request_auth_token_value(request)
+    if not auth_token_value:
         return target
 
     parsed = urlparse(target)
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query.pop("auth_token", None)
     query["authToken"] = auth_token_value
     updated_query = urlencode(query)
     return urlunparse(parsed._replace(query=updated_query))
@@ -699,6 +705,14 @@ def redirect_with_request_auth(request, target):
 def url_with_query(request, **updates):
     """Vraća trenutni URL sa ažuriranim query parametrima."""
     query = request.GET.copy()
+    if not is_extension_request(request):
+        query.pop("authToken", None)
+        query.pop("auth_token", None)
+    else:
+        auth_token_value = get_request_auth_token_value(request)
+        if auth_token_value:
+            query["authToken"] = auth_token_value
+        query.pop("auth_token", None)
     if query.get("mock") not in {"login", "register"}:
         query.pop("mock", None)
     for key, value in updates.items():
@@ -904,8 +918,8 @@ def base_context(request, *, title, active_tab="home", selected_space=None):
         "connect_extension_url": reverse("app:connect_extension"),
         "next_url": auth_next_url,
         "password_rules": PASSWORD_RULES,
-        "auth_token_value": get_current_auth_token_value(request),
-        "is_extension_mode": bool(get_current_auth_token_value(request)),
+        "auth_token_value": get_request_auth_token_value(request) if is_extension_request(request) else "",
+        "is_extension_mode": is_extension_request(request),
         "home_url": append_request_auth(reverse("app:home"), request),
         "profile_url": append_request_auth(reverse("app:profile"), request),
         "back_url": append_request_auth(reverse("app:home"), request),
@@ -1124,7 +1138,7 @@ def logout_action(request):
     session_token_value = request.session.pop("sidekick_auth_token", None)
     if session_token_value:
         AuthToken.objects.filter(token_value=session_token_value).update(is_revoked=True)
-    request_token_value = get_current_auth_token_value(request)
+    request_token_value = get_request_auth_token_value(request)
     if request_token_value:
         AuthToken.objects.filter(token_value=request_token_value).update(is_revoked=True)
     request.session.pop("sidekick_user_id", None)
@@ -1586,6 +1600,7 @@ def api_create_item(request):
     if error_message:
         return json_error(error_message, status=400, code=error_code)
 
+    emit_space_item_created(item)
     return JsonResponse({"item": serialize_item_payload(item)}, status=201)
 
 
@@ -1604,7 +1619,9 @@ def api_delete_item(request, item_id):
     if not can_delete_item_record(item, current_user):
         return json_error("You do not have permission to delete this item.", status=403, code="forbidden")
 
+    source_space_id = item.space_id
     item.delete()
+    emit_space_item_removed(source_space_id, item_id)
     return JsonResponse({}, status=204)
 
 
@@ -1701,6 +1718,7 @@ def create_item(request):
             return redirect_with_request_auth(request, fallback_url)
         return redirect_with_request_auth(request, f'{fallback_url}?dialog=add-item')
 
+    emit_space_item_created(item)
     if is_ajax_request:
         return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=201)
     messages.success(request, "Item saved.")
@@ -1735,11 +1753,14 @@ def delete_item(request):
         return redirect_with_request_auth(request, reverse("app:home"))
 
     source_space = item.space
+    source_space_id = source_space.space_id if source_space else None
     now = timezone.now()
     item.delete()
     if source_space is not None:
         source_space.updated_at = now
         source_space.save(update_fields=["updated_at"])
+    if source_space_id is not None:
+        emit_space_item_removed(source_space_id, int(item_id))
 
     if is_ajax_request:
         return JsonResponse(
@@ -1777,12 +1798,14 @@ def move_item(request):
             return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=200)
         return redirect_with_request_auth(request, reverse("app:home"))
 
+    source_space_id = item.space_id
     now = timezone.now()
     item.space = target_space
     item.updated_at = now
     item.save(update_fields=["space", "updated_at"])
     target_space.updated_at = now
     target_space.save(update_fields=["updated_at"])
+    emit_space_item_moved(item, source_space_id)
 
     if is_ajax_request:
         return JsonResponse({"status": "ok", "item": serialize_item_payload(item)}, status=200)

@@ -81,12 +81,12 @@ def get_request_auth_token(request):
     return auth_token
 
 
-def get_current_auth_token_value(request):
-    """Vraća tekstualnu vrednost aktivnog tokena za tekući zahtev."""
+def is_extension_request(request):
+    """Vraća informaciju da li tekući zahtev koristi extension token umesto web sesije."""
     auth_token = get_request_auth_token(request)
     if auth_token is None:
-        return ""
-    return auth_token.token_value
+        return False
+    return auth_token.client_type == AuthToken.ClientType.EXTENSION
 
 
 def get_current_user(request):
@@ -248,6 +248,7 @@ def serialize_item(item):
         "domain": domain if item.item_type == Item.ItemType.LINK else None,
         "space": item.space.name,
         "added_by": item.added_by.full_name,
+        "added_by_id": item.added_by_id,
         "source_url": item.source_url,
         "captured_url": item.captured_url,
         "page_title": item.page_title,

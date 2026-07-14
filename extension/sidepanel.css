@@ -22,8 +22,18 @@ body {
   color: #1f2026;
 }
 
+body.extension-booting {
+  background: #f4f4f8;
+}
+
 body.extension-connected {
   background: transparent;
+}
+
+body.extension-booting .auth-screen,
+body.extension-booting .app-screen,
+body.extension-booting .panel-topbar {
+  display: none;
 }
 
 body.extension-connected .auth-screen {

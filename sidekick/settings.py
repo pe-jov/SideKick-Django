@@ -32,6 +32,7 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "sidekick.urls"
+ASGI_APPLICATION = "sidekick.asgi.application"
 
 TEMPLATES = [
     {

@@ -834,6 +834,10 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
 }
 
 .item-link-topline {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -844,18 +848,29 @@ body.is-sorting-items .space-card--drop-disabled.drag-invalid .muted {
   height: 34px;
   padding: 7px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--item-accent, var(--surface)) 18%, var(--surface));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--item-accent, transparent) 18%, transparent);
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
   object-fit: contain;
 }
 
 .item-link-copy {
-  display: grid;
-  align-content: center;
-  justify-items: center;
+  position: absolute;
+  inset: 24px;
   min-height: 0;
-  flex: 1;
   text-align: center;
+}
+
+.item-content--link .small-icon {
+  background: transparent;
+}
+
+.item-content--link .item-title,
+.item-content--link .item-domain {
+  position: absolute;
+  left: 50%;
+  width: 100%;
+  max-width: calc(100% - 48px);
+  transform: translateX(-50%);
 }
 
 .item-text,
@@ -1325,8 +1340,10 @@ body.modal-scroll-locked {
 .link-preview-favicon {
   width: 24px;
   height: 24px;
-  border-radius: 6px;
-  background: var(--surface);
+  padding: 4px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.08);
 }
 
 .link-preview-domain {
@@ -1825,6 +1842,19 @@ body.modal-scroll-locked {
     height: 30px;
   }
 
+  .item-link-topline {
+    top: 18px;
+    left: 18px;
+  }
+
+  .item-link-copy {
+    inset: 18px;
+  }
+
+  .item-card[data-type="link"] .item-domain {
+    bottom: 18px;
+  }
+
   .item-title,
   .item-domain {
     overflow-wrap: anywhere;
@@ -1914,6 +1944,19 @@ body.modal-scroll-locked {
   .item-content,
   .item-content--link {
     padding: 16px;
+  }
+
+  .item-link-topline {
+    top: 16px;
+    left: 16px;
+  }
+
+  .item-link-copy {
+    inset: 16px;
+  }
+
+  .item-card[data-type="link"] .item-domain {
+    bottom: 16px;
   }
 
   .item-card {
@@ -2289,10 +2332,16 @@ body.modal-scroll-locked {
 }
 
 .item-card[data-type="link"] .item-title {
-  margin: 0 0 8px;
+  top: 50%;
+  margin: 0;
   font-size: clamp(18px, 2vw, 24px);
   line-height: 1.22;
   text-wrap: balance;
+  transform: translate(-50%, -50%);
+}
+
+.item-card[data-type="link"] .item-domain {
+  bottom: 24px;
 }
 
 .overlay-image {

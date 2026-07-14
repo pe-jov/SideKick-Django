@@ -11,6 +11,7 @@
   {% if item.domain %}data-domain="{{ item.domain|escape }}"{% endif %}
   {% if item.page_title %}data-page-title="{{ item.page_title|escape }}"{% endif %}
   {% if item.added_by %}data-added-by="{{ item.added_by|escape }}"{% endif %}
+  {% if item.added_by_id %}data-added-by-id="{{ item.added_by_id }}"{% endif %}
   {% if show_item_actions %}data-delete-url="{{ item.delete_url }}"{% endif %}
   {% if item.can_drag %}data-can-drag="true"{% endif %}
   tabindex="0"

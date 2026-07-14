@@ -2,6 +2,7 @@
 <a
   class="space-card {% if space.can_accept_drop %}space-card--drop-target{% else %}space-card--drop-disabled{% endif %}"
   href="{{ space.detail_url }}"
+  draggable="false"
   data-space-role="{{ space.role|lower }}"
   {% if space.can_accept_drop %}data-drop-space-id="{{ space.id }}"{% endif %}
   {% if not space.can_accept_drop %}data-drop-disabled="true"{% endif %}
