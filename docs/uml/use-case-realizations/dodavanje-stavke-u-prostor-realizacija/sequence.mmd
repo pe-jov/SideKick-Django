@@ -1,0 +1,46 @@
+%% Diagram type: Mermaid
+sequenceDiagram
+autonumber
+actor K as Korisnik
+participant UI as Web interfejs
+participant V as create_item()
+participant S as SideKick logika
+participant DB as Baza podataka
+participant RT as Socket.IO
+participant DC as Drugi klijent
+
+K->>UI: Unosi podatke o stavci
+UI->>V: POST zahtev za dodavanje stavke
+V->>S: Provera korisnika i dozvola
+
+alt Korisnik nije prijavljen ili nema pravo dodavanja
+  S-->>V: Odbij zahtev
+  V-->>UI: Greska / redirect
+  UI-->>K: Poruka o gresci
+else Korisnik ima pravo
+  V->>S: Obrada i validacija stavke
+
+  alt Neispravni podaci
+    S-->>V: Greska validacije
+    V-->>UI: Greska / redirect
+    UI-->>K: Neuspesno cuvanje
+  else Ispravna tekstualna stavka
+    S->>DB: Sacuvaj TEXT stavku
+    DB-->>S: Stavka sacuvana
+  else Ispravna link stavka
+    S->>S: Ucitaj ili odredi naslov linka
+    S->>DB: Sacuvaj LINK stavku
+    DB-->>S: Stavka sacuvana
+  else Ispravna slika
+    S->>S: Obradi upload ili image URL
+    S->>DB: Sacuvaj IMAGE stavku
+    DB-->>S: Stavka sacuvana
+  end
+
+  S->>RT: Emituj dogadjaj o novoj stavci
+  RT-->>DC: space:item_created
+  DC-->>DC: Azuriranje prikaza bez refresh-a
+  S-->>V: Uspeh
+  V-->>UI: Success / redirect
+  UI-->>K: Nova stavka prikazana
+end

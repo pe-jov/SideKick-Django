@@ -1,0 +1,138 @@
+%% Diagram type: Mermaid
+classDiagram
+direction LR
+
+class TimestampedModel {
+  <<abstract>>
+  +datetime created_at
+  +datetime updated_at
+}
+
+class User {
+  +int user_id
+  +string email
+  +string password_hash
+  +string full_name
+  +string avatar_path
+  +string avatar_url
+}
+
+class AuthToken {
+  +int token_id
+  +string token_value
+  +ClientType client_type
+  +datetime issued_at
+  +datetime expires_at
+  +bool is_revoked
+}
+
+class ResearchSpace {
+  +int space_id
+  +string name
+  +string description
+  +bool is_archived
+  +string image_url
+}
+
+class Membership {
+  +int membership_id
+  +Role role
+  +Status status
+}
+
+class CollaborationRequest {
+  +int request_id
+  +Status status
+  +string message
+  +datetime requested_at
+  +datetime resolved_at
+}
+
+class Item {
+  +int item_id
+  +ItemType item_type
+  +string content_text
+  +string source_url
+  +string image_path
+  +string title
+  +string note
+  +SourcePlatform source_platform
+  +string captured_url
+  +string page_title
+  +string domain
+  +string image_url
+}
+
+class ShareLink {
+  +int share_link_id
+  +string token
+  +datetime created_at
+  +datetime expires_at
+  +bool is_active
+  +bool is_available
+}
+
+class AuthTokenClientType {
+  <<enumeration>>
+  WEB
+  EXTENSION
+}
+
+class MembershipRole {
+  <<enumeration>>
+  COLLABORATOR
+  VIEWER
+}
+
+class MembershipStatus {
+  <<enumeration>>
+  ACTIVE
+  REMOVED
+}
+
+class CollaborationRequestStatus {
+  <<enumeration>>
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+class ItemType {
+  <<enumeration>>
+  TEXT
+  LINK
+  IMAGE
+}
+
+class SourcePlatform {
+  <<enumeration>>
+  WEB
+  EXTENSION
+}
+
+TimestampedModel <|-- User
+TimestampedModel <|-- ResearchSpace
+TimestampedModel <|-- Membership
+TimestampedModel <|-- Item
+
+User "1" --> "0..*" AuthToken : has
+User "1" --> "0..*" ResearchSpace : owns
+User "1" --> "0..*" Membership : participates
+User "1" --> "0..*" CollaborationRequest : requester
+User "0..1" --> "0..*" CollaborationRequest : resolves
+User "1" --> "0..*" Item : adds
+User "1" --> "0..*" ShareLink : creates
+
+ResearchSpace "1" --> "0..*" Membership : contains
+ResearchSpace "1" --> "0..*" CollaborationRequest : receives
+ResearchSpace "1" --> "0..*" Item : contains
+ResearchSpace "1" --> "0..*" ShareLink : has
+
+Membership "0..*" --> "0..1" ShareLink : joined_via
+
+AuthToken ..> AuthTokenClientType : client_type
+Membership ..> MembershipRole : role
+Membership ..> MembershipStatus : status
+CollaborationRequest ..> CollaborationRequestStatus : status
+Item ..> ItemType : item_type
+Item ..> SourcePlatform : source_platform

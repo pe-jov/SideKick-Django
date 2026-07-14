@@ -1,0 +1,16 @@
+' Diagram type: PlantUML
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Registrovani korisnik" as User
+actor "Chrome ekstenzija" as Extension
+
+rectangle "Povezivanje Chrome ekstenzije sa nalogom" {
+  usecase "Povezivanje Chrome ekstenzije sa nalogom" as UC_ConnectExtension
+}
+
+User --> UC_ConnectExtension
+Extension --> UC_ConnectExtension
+
+@enduml

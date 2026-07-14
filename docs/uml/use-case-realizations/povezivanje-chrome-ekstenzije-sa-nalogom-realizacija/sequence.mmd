@@ -1,0 +1,37 @@
+%% Diagram type: Mermaid
+sequenceDiagram
+autonumber
+actor K as Korisnik
+participant WEB as Web interfejs
+participant APP as SideKick backend
+participant CS as Content script
+participant EXT as Chrome ekstenzija
+participant API as API validacija
+
+K->>WEB: Klik na "Connect extension"
+WEB->>APP: Zahtev za povezivanje ekstenzije
+
+alt Korisnik nije prijavljen ili je zahtev neispravan
+  APP-->>WEB: Greska / odbijanje
+  WEB-->>K: Poruka o gresci
+else Zahtev je ispravan
+  APP->>APP: Opoziv starih extension tokena
+  APP->>APP: Generisanje novog extension tokena
+  APP-->>WEB: Token, base URL i podaci o korisniku
+
+  alt Browser bridge nije dostupan
+    WEB-->>K: Poruka da otvori ekstenziju i pokusa ponovo
+  else Browser bridge je dostupan
+    WEB->>CS: Prosledjuje token ekstenziji
+    CS->>EXT: Cuva session podatke i obavestava ekstenziju
+    EXT->>API: Provera tokena i korisnika
+
+    alt Token nije validan
+      API-->>EXT: Greska
+      EXT-->>K: Ekstenzija ostaje nepovezana
+    else Token je validan
+      API-->>EXT: Korisnik potvrdjen
+      EXT-->>K: Ekstenzija povezana i spremna za rad
+    end
+  end
+end

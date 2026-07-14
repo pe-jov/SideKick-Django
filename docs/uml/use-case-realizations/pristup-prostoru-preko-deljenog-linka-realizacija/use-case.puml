@@ -1,0 +1,16 @@
+' Diagram type: PlantUML
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Gost" as Guest
+actor "Registrovani korisnik" as User
+
+rectangle "Pristup prostoru preko deljenog linka" {
+  usecase "Pristup prostoru preko deljenog linka" as UC_ShareAccess
+}
+
+Guest --> UC_ShareAccess
+User --> UC_ShareAccess
+
+@enduml

@@ -29,6 +29,18 @@ Make sure the Django app is running on:
 
 `http://127.0.0.1:8000`
 
+Before starting the app on a new machine, initialize the database:
+
+```powershell
+py manage.py migrate
+```
+
+If you want the shared demo accounts and sample content used in the project, run:
+
+```powershell
+py manage.py reseed_demo
+```
+
 For Socket.IO updates, start the app with:
 
 `py -m uvicorn sidekick.asgi:application --host 127.0.0.1 --port 8000`

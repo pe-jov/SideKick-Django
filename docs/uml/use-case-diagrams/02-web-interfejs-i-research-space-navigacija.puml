@@ -1,0 +1,44 @@
+' Diagram type: PlantUML
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Registrovani korisnik" as User
+actor "Vlasnik prostora" as Owner
+actor "Kolaborator" as Collaborator
+actor "Viewer" as Viewer
+
+User <|-- Owner
+User <|-- Collaborator
+User <|-- Viewer
+
+rectangle "SideKick" {
+  usecase "Pregled pocetne stranice" as UC_Home
+  usecase "Pregled Inbox-a" as UC_Inbox
+  usecase "Pregled dostupnih prostora" as UC_ListSpaces
+  usecase "Filtriranje prostora" as UC_FilterSpaces
+  usecase "Otvaranje prostora" as UC_OpenSpace
+  usecase "Pregled sadrzaja prostora" as UC_ViewSpaceContent
+  usecase "Filtriranje stavki u prostoru" as UC_FilterItems
+  usecase "Pregled detalja stavke" as UC_PreviewItem
+  usecase "Kreiranje prostora" as UC_CreateSpace
+  usecase "Izmena prostora" as UC_UpdateSpace
+  usecase "Brisanje prostora" as UC_DeleteSpace
+}
+
+User --> UC_Home
+User --> UC_Inbox
+User --> UC_ListSpaces
+User --> UC_FilterSpaces
+User --> UC_OpenSpace
+User --> UC_ViewSpaceContent
+User --> UC_FilterItems
+User --> UC_PreviewItem
+
+Owner --> UC_CreateSpace
+Owner --> UC_UpdateSpace
+Owner --> UC_DeleteSpace
+
+UC_OpenSpace .> UC_ViewSpaceContent : <<include>>
+
+@enduml

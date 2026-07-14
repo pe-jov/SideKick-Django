@@ -1,0 +1,31 @@
+' Diagram type: PlantUML
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Gost" as Guest
+actor "Registrovani korisnik" as User
+
+rectangle "SideKick" {
+  usecase "Registracija" as UC_Register
+  usecase "Prijava" as UC_Login
+  usecase "Odjava" as UC_Logout
+  usecase "Pregled profila" as UC_ViewProfile
+  usecase "Izmena profila" as UC_EditProfile
+  usecase "Promena lozinke" as UC_ChangePassword
+  usecase "Povezivanje ekstenzije sa nalogom" as UC_ConnectExtension
+  usecase "Otvaranje deljenog linka" as UC_OpenShareLink
+}
+
+Guest --> UC_Register
+Guest --> UC_Login
+Guest --> UC_OpenShareLink
+
+User --> UC_Logout
+User --> UC_ViewProfile
+User --> UC_EditProfile
+User --> UC_ChangePassword
+User --> UC_ConnectExtension
+User --> UC_OpenShareLink
+
+@enduml

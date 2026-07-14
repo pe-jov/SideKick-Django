@@ -1,0 +1,16 @@
+' Diagram type: PlantUML
+@startuml
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Vlasnik prostora" as Owner
+actor "Kolaborator" as Collaborator
+
+rectangle "Dodavanje stavke u prostor" {
+  usecase "Dodavanje stavke u prostor" as UC_AddItem
+}
+
+Owner --> UC_AddItem
+Collaborator --> UC_AddItem
+
+@enduml

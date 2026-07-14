@@ -1,0 +1,58 @@
+%% Diagram type: Mermaid
+sequenceDiagram
+autonumber
+actor U as Korisnik
+participant UI as Browser
+participant SL as Share link logika
+participant A as Autentikacija
+participant DB as Baza podataka
+
+U->>UI: Otvara deljeni link
+UI->>SL: Zahtev za pristup prostoru
+SL->>DB: Provera share linka
+
+alt Link ne postoji ili je istekao
+  SL-->>UI: 404 / greska
+  UI-->>U: Link nije vazeci
+else Link je vazeci
+  SL->>A: Provera prijave korisnika
+
+  alt Korisnik nije prijavljen
+    A-->>SL: Nije prijavljen
+    SL-->>UI: Redirect na prijavu
+    UI-->>U: Prikaz login toka
+  else Korisnik je prijavljen
+    A-->>SL: Prijavljen korisnik
+    SL->>DB: Provera postojeceg pristupa prostoru
+
+    alt Korisnik vec ima pristup
+      DB-->>SL: Vec owner/member
+      SL-->>UI: Redirect na prostor
+      UI-->>U: Otvoren prostor
+    else Korisnik nema pristup
+      SL-->>UI: Prikaz opcija Join as Viewer / Request Collaborator
+
+      alt Korisnik bira Join as Viewer
+        UI->>SL: Zahtev za pridruzivanje
+        SL->>DB: Kreiraj ili azuriraj Membership kao VIEWER
+        DB-->>SL: Membership sacuvan
+        SL-->>UI: Redirect na prostor
+        UI-->>U: Pristup kao viewer
+      else Korisnik bira Request Collaborator Access
+        UI->>SL: Zahtev za collaborator pristup
+        SL->>DB: Provera postojeceg zahteva
+
+        alt Zahtev vec postoji
+          DB-->>SL: Postojeci status zahteva
+          SL-->>UI: Info / error poruka
+          UI-->>U: Povratna informacija
+        else Novi zahtev
+          SL->>DB: Kreiraj CollaborationRequest
+          DB-->>SL: Zahtev sacuvan
+          SL-->>UI: Success poruka
+          UI-->>U: Zahtev poslat
+        end
+      end
+    end
+  end
+end
